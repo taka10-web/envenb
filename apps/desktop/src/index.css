@@ -57,13 +57,14 @@
 }
 
 @theme inline {
-  /* Retro: no rounded corners anywhere. */
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --font-sans: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  /* Retro accent, kept subtle: tight corners, system font for body, pixel font for headings. */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --font-pixel: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Hard, offset "block" shadows. */
   --shadow-block: 4px 4px 0 0 var(--color-border);
@@ -106,23 +107,13 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-family: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
-    font-size: 15px;
-    -webkit-font-smoothing: none;
-    letter-spacing: 0.01em;
-    /* Faint scanlines for the CRT feel; too subtle to hurt legibility. */
-    background-image: repeating-linear-gradient(
-      0deg,
-      transparent 0 3px,
-      color-mix(in oklch, var(--foreground) 3%, transparent) 3px 4px
-    );
+    @apply bg-background text-foreground antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   }
-  h1, h2, h3 {
+  /* Page titles and the brand carry the pixel look; body text stays crisp. */
+  h1, .font-pixel {
+    font-family: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     letter-spacing: 0.02em;
-  }
-  code, pre, kbd, .font-mono {
-    -webkit-font-smoothing: auto;
   }
   ::selection {
     background: var(--primary);
