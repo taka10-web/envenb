@@ -159,6 +159,24 @@ pub enum Command {
         #[arg(long, value_name = "KIND", default_value = "mcp")]
         kind: String,
     },
+    #[command(about = tr(
+        "Run the Local Agent on a Unix domain socket (<data dir>/agent.sock)",
+        "Local Agent を Unix ドメインソケットで起動 (<データディレクトリ>/agent.sock)",
+    ))]
+    Agent {
+        #[arg(long, help = tr("Send a ping to a running agent and exit", "起動中の Agent に ping を送って終了"))]
+        ping: bool,
+    },
+    #[command(about = tr(
+        "Scan a directory for leaked secret values and tracked .env files (values are never printed)",
+        "ディレクトリ内の Secret 値の漏えいと追跡中の .env を検査 (値は表示しません)",
+    ))]
+    Scan {
+        #[arg(value_name = "DIR", default_value = ".")]
+        dir: String,
+        #[arg(long, help = tr("Scan every environment of the current project, not just the selected one", "選択中の環境だけでなくプロジェクトの全環境を対象にする"))]
+        all_environments: bool,
+    },
     #[command(about = tr("Settings shared with the desktop app", "Desktop と共有する設定"))]
     Config {
         #[command(subcommand)]
@@ -268,10 +286,15 @@ pub enum ConnectionCommand {
         #[arg(value_name = "NAME", help = tr("Connection name (e.g. supabase)", "接続名 (例: supabase)"))]
         name: String,
         #[arg(long, value_name = "KIND", default_value = "generic_http", help = tr(
-            "generic_http | openai | supabase",
-            "generic_http | openai | supabase",
+            "generic_http | openai | supabase | cloudflare | vercel | github | aws",
+            "generic_http | openai | supabase | cloudflare | vercel | github | aws",
         ))]
         kind: String,
+        #[arg(long = "meta", value_name = "KEY=VALUE", help = tr(
+            "Non-secret metadata, repeatable. aws needs region=, service=, access_key_id_secret=<SECRET name>",
+            "秘密でないメタデータ (複数指定可)。aws は region= service= access_key_id_secret=<SECRET 名> が必要",
+        ))]
+        meta: Vec<String>,
         #[arg(long, value_name = "URL", help = tr("Base URL (https)", "ベース URL (https)"))]
         url: Option<String>,
         #[arg(long, value_name = "SECRET_NAME", help = tr(

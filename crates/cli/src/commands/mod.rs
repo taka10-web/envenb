@@ -1,3 +1,4 @@
+mod agent;
 mod ai;
 mod config;
 mod connection;
@@ -6,6 +7,7 @@ mod env;
 mod mcp;
 mod project;
 mod run;
+mod scan;
 mod status;
 mod var;
 mod vault;
@@ -99,6 +101,11 @@ pub async fn run(args: Cli, core: envfish_core::Result<EnvFish>) -> anyhow::Resu
         Command::Ai { command } => ai::run(&ctx, command).await,
         Command::Activity { limit } => ai::activity(&ctx, limit).await,
         Command::Mcp { client, kind } => mcp::run(ctx, &client, &kind).await,
+        Command::Agent { ping } => agent::run(ctx, ping).await,
+        Command::Scan {
+            dir,
+            all_environments,
+        } => scan::run(&ctx, &dir, all_environments).await,
         Command::Config { command } => config::run(&ctx, command).await,
         Command::Vault { command } => vault::run(&ctx, command).await,
     }

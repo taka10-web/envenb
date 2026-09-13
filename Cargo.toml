@@ -57,6 +57,7 @@ sha2 = "0.10"
 hex = "0.4"
 envfish-broker = { path = "crates/broker" }
 envfish-mcp = { path = "crates/mcp" }
+envfish-daemon = { path = "crates/daemon" }
 
 [profile.release]
 strip = true

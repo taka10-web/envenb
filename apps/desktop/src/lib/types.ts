@@ -52,8 +52,9 @@ export const SettingsSchema = z.object({
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
-export const ConnectionKindSchema = z.enum(["generic_http", "openai", "supabase"]);
+export const ConnectionKindSchema = z.enum(["generic_http", "openai", "supabase", "cloudflare", "vercel", "github", "aws"]);
 export type ConnectionKind = z.infer<typeof ConnectionKindSchema>;
+export const CONNECTION_KINDS: ConnectionKind[] = ConnectionKindSchema.options;
 
 export const ConnectionSchema = z.object({
   id: z.string(),

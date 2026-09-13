@@ -11,6 +11,8 @@
 //! Permission checks and audit logging are the caller's job (see `envfish-mcp`);
 //! the broker only knows how to make the call safely.
 
+pub mod sigv4;
+
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -29,6 +31,10 @@ pub enum BrokerError {
     InvalidHeader(String),
     #[error("unsupported auth style: {0}")]
     InvalidAuthStyle(String),
+    #[error("aws connection is missing metadata.{0}")]
+    MissingAwsMetadata(&'static str),
+    #[error("signing failed: {0}")]
+    Signing(String),
     #[error("request failed: {0}")]
     Http(String),
     #[error(transparent)]
@@ -133,6 +139,42 @@ impl Broker {
         let request = match (&connection.auth_secret, connection.auth_style.as_str()) {
             (_, "none") => builder.build().map_err(|e| BrokerError::Http(e.to_string()))?,
             (None, _) => return Err(BrokerError::NoCredential),
+            (Some(secret_name), "sigv4") => {
+                let meta = |k: &'static str| {
+                    connection
+                        .metadata
+                        .get(k)
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty())
+                        .ok_or(BrokerError::MissingAwsMetadata(k))
+                };
+                let region = meta("region")?.to_string();
+                let service = meta("service")?.to_string();
+                let id_secret = meta("access_key_id_secret")?.to_string();
+                let mut request = builder.build().map_err(|e| BrokerError::Http(e.to_string()))?;
+                let access_key_id = self
+                    .core
+                    .with_secret(&connection.environment_id, &id_secret, |s| s.to_string())
+                    .await?;
+                let signed = self
+                    .core
+                    .with_secret(&connection.environment_id, secret_name, |secret| {
+                        fingerprint = Some(secret.to_string());
+                        sigv4::sign(
+                            &mut request,
+                            &sigv4::SigningScope {
+                                region: &region,
+                                service: &service,
+                            },
+                            &access_key_id,
+                            secret,
+                            chrono::Utc::now(),
+                        )
+                    })
+                    .await?;
+                signed.map_err(BrokerError::Signing)?;
+                request
+            }
             (Some(secret_name), style) => {
                 let style = style.to_string();
                 let kind = connection.kind;
@@ -244,10 +286,10 @@ fn apply_auth(
         s if s.starts_with("header:") => header(builder, &s["header:".len()..], secret.to_string()),
         s if s.starts_with("query:") => Ok(builder.query(&[(&s["query:".len()..], secret)])),
         "none" => Ok(builder),
-        other => {
-            let _ = kind;
-            Err(BrokerError::InvalidAuthStyle(other.to_string()))
-        }
+        "sigv4" => Err(BrokerError::InvalidAuthStyle(format!(
+            "sigv4 is handled by the broker for {kind} connections"
+        ))),
+        other => Err(BrokerError::InvalidAuthStyle(other.to_string())),
     }
 }
 

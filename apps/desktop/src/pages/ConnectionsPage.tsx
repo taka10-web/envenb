@@ -4,24 +4,64 @@ import { Link } from "react-router-dom";
 import { ArrowRight, KeyRound, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, GoldfishInline, GoldfishLoader, Input, Label } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
-import { ConnectionKindSchema, type Connection, type ConnectionKind, type Environment, type Project } from "../lib/types";
+import { CONNECTION_KINDS, type Connection, type ConnectionKind, type Environment, type Project } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
 import { ErrorNote } from "../components/ErrorNote";
 import { EmptyState } from "../components/EmptyState";
 import { Select } from "../components/Select";
-import { useI18n } from "../lib/i18n";
+import { useI18n, type MessageKey } from "../lib/i18n";
 
-const KINDS = ConnectionKindSchema.options;
+const KINDS = CONNECTION_KINDS;
+const KIND_LABEL_KEY: Record<ConnectionKind, MessageKey> = {
+  generic_http: "connections.kind.generic_http",
+  openai: "connections.kind.openai",
+  supabase: "connections.kind.supabase",
+  cloudflare: "connections.kind.cloudflare",
+  vercel: "connections.kind.vercel",
+  github: "connections.kind.github",
+  aws: "connections.kind.aws",
+};
+/** Shown as the placeholder; kinds with a well-known API host may leave the URL blank. */
 const DEFAULT_BASE_URL: Record<ConnectionKind, string> = {
-  openai: "https://api.openai.com/v1",
-  supabase: "https://xxxx.supabase.co",
   generic_http: "https://api.example.com",
+  openai: "https://api.openai.com/v1",
+  supabase: "https://my-app.supabase.co",
+  cloudflare: "https://api.cloudflare.com/client/v4",
+  vercel: "https://api.vercel.com",
+  github: "https://api.github.com",
+  aws: "https://sqs.ap-northeast-1.amazonaws.com",
+};
+const BASE_URL_OPTIONAL: Record<ConnectionKind, boolean> = {
+  generic_http: false,
+  openai: true,
+  supabase: false,
+  cloudflare: true,
+  vercel: true,
+  github: true,
+  aws: false,
 };
 const DEFAULT_AUTH_STYLE: Record<ConnectionKind, string> = {
+  generic_http: "bearer",
   openai: "bearer",
   supabase: "supabase",
-  generic_http: "bearer",
+  cloudflare: "bearer",
+  vercel: "bearer",
+  github: "bearer",
+  aws: "sigv4",
 };
+
+/** `metadata` is `unknown` on the wire; read string fields defensively. */
+function metadataString(metadata: unknown, key: string): string | null {
+  if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return null;
+  const v = (metadata as Record<string, unknown>)[key];
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+function awsScope(c: Connection): string | null {
+  if (c.kind !== "aws") return null;
+  const region = metadataString(c.metadata, "region");
+  const service = metadataString(c.metadata, "service");
+  return region || service ? `${region ?? "?"}/${service ?? "?"}` : null;
+}
 
 export function ConnectionsPage({ project }: { project?: Project }) {
   return project ? <ProjectConnections project={project} /> : <AllConnections />;
@@ -143,6 +183,10 @@ function AddConnectionForm({ project, environments }: { project: Project; enviro
   const [baseUrl, setBaseUrl] = useState("");
   const [authSecret, setAuthSecret] = useState("");
   const [authStyle, setAuthStyle] = useState("");
+  const [awsRegion, setAwsRegion] = useState("");
+  const [awsService, setAwsService] = useState("");
+  const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
+  const isAws = kind === "aws";
 
   // Keep the environment selection valid if the list changes underneath us.
   useEffect(() => {
@@ -165,18 +209,25 @@ function AddConnectionForm({ project, environments }: { project: Project; enviro
         base_url: baseUrl.trim() || null,
         auth_secret: authSecret || null,
         auth_style: authStyle.trim() || null,
+        metadata: isAws
+          ? { region: awsRegion.trim(), service: awsService.trim(), access_key_id_secret: awsAccessKeyId }
+          : null,
       }),
     onSuccess: () => {
       setName("");
       setBaseUrl("");
       setAuthSecret("");
       setAuthStyle("");
+      setAwsRegion("");
+      setAwsService("");
+      setAwsAccessKeyId("");
       void qc.invalidateQueries({ queryKey: queryKeys.connections(project.id) });
     },
   });
 
-  const baseUrlRequired = kind !== "openai";
-  const canSubmit = !!environmentId && !!name.trim() && (!baseUrlRequired || !!baseUrl.trim()) && !create.isPending;
+  const baseUrlRequired = !BASE_URL_OPTIONAL[kind];
+  const awsComplete = !isAws || (!!awsRegion.trim() && !!awsService.trim() && !!awsAccessKeyId && !!authSecret);
+  const canSubmit = !!environmentId && !!name.trim() && (!baseUrlRequired || !!baseUrl.trim()) && awsComplete && !create.isPending;
 
   return (
     <>
@@ -202,14 +253,14 @@ function AddConnectionForm({ project, environments }: { project: Project; enviro
           <Select id="conn-kind" value={kind} onChange={(e) => setKind(e.target.value as ConnectionKind)} className="w-40">
             {KINDS.map((k) => (
               <option key={k} value={k}>
-                {k}
+                {t(KIND_LABEL_KEY[k])}
               </option>
             ))}
           </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="conn-name">{t("common.name")}</Label>
-          <Input id="conn-name" placeholder={kind === "openai" ? "openai" : "backend-api"} value={name} onChange={(e) => setName(e.target.value)} className="w-44" />
+          <Input id="conn-name" placeholder={kind === "generic_http" ? "backend-api" : kind} value={name} onChange={(e) => setName(e.target.value)} className="w-44" />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="conn-url">
@@ -218,8 +269,37 @@ function AddConnectionForm({ project, environments }: { project: Project; enviro
           </Label>
           <Input id="conn-url" placeholder={DEFAULT_BASE_URL[kind]} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="w-72 font-mono" />
         </div>
+        {isAws && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="conn-aws-region">{t("connections.aws.region")}</Label>
+              <Input id="conn-aws-region" placeholder="ap-northeast-1" value={awsRegion} onChange={(e) => setAwsRegion(e.target.value)} className="w-40 font-mono" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="conn-aws-service">{t("connections.aws.service")}</Label>
+              <Input id="conn-aws-service" placeholder="sqs" value={awsService} onChange={(e) => setAwsService(e.target.value)} className="w-32 font-mono" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="conn-aws-access-key">{t("connections.aws.accessKeyId")}</Label>
+              <Select
+                id="conn-aws-access-key"
+                value={awsAccessKeyId}
+                onChange={(e) => setAwsAccessKeyId(e.target.value)}
+                className="w-52 font-mono"
+                disabled={vars.isLoading}
+              >
+                <option value="">{t("connections.noCredential")}</option>
+                {secrets.map((v) => (
+                  <option key={v.id} value={v.name}>
+                    {v.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </>
+        )}
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-secret">{t("connections.credential")}</Label>
+          <Label htmlFor="conn-secret">{isAws ? t("connections.aws.secretAccessKey") : t("connections.credential")}</Label>
           <Select id="conn-secret" value={authSecret} onChange={(e) => setAuthSecret(e.target.value)} className="w-52 font-mono" disabled={vars.isLoading}>
             <option value="">{t("connections.noCredential")}</option>
             {secrets.map((v) => (
@@ -269,10 +349,13 @@ function ConnectionTable({ connections, onDelete }: { connections: Connection[];
         {connections.map((c) => (
           <tr key={c.id} className="border-b last:border-0">
             <td className="py-2 pr-4">
-              <Badge variant="secondary">{c.kind}</Badge>
+              <Badge variant="secondary">{t(KIND_LABEL_KEY[c.kind])}</Badge>
             </td>
             <td className="py-2 pr-4 font-medium">{c.name}</td>
-            <td className="py-2 pr-4 font-mono text-xs text-muted-foreground">{c.base_url}</td>
+            <td className="py-2 pr-4 font-mono text-xs text-muted-foreground">
+              {c.base_url}
+              {awsScope(c) && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[11px] text-foreground/80">{awsScope(c)}</span>}
+            </td>
             <td className="py-2 pr-4 font-mono text-xs">
               {c.auth_secret ? (
                 <span className="inline-flex items-center gap-1">

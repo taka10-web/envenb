@@ -198,6 +198,26 @@ envfish connection list
 `--auth` は `bearer` (既定) / `header:<ヘッダー名>` / `query:<パラメータ名>` / `supabase` / `none`。
 ベース URL は https のみ (localhost だけ http 可) です。
 
+種別と既定値:
+
+| kind | 既定 URL | 認証 |
+|---|---|---|
+| `generic_http` | 必須 | bearer など |
+| `openai` | https://api.openai.com/v1 | bearer |
+| `supabase` | 必須 | apikey + Bearer |
+| `cloudflare` | https://api.cloudflare.com/client/v4 | bearer |
+| `vercel` | https://api.vercel.com | bearer |
+| `github` | https://api.github.com | bearer |
+| `aws` | 必須 (サービスのエンドポイント) | SigV4。`--meta region= service= access_key_id_secret=<SECRET 名>` が必要で、`--secret` にはシークレットアクセスキーの SECRET 名 |
+
+```bash
+printf '%s' "$AWS_ACCESS_KEY_ID"     | envfish var set-secret AWS_ACCESS_KEY_ID
+printf '%s' "$AWS_SECRET_ACCESS_KEY" | envfish var set-secret AWS_SECRET_ACCESS_KEY
+envfish connection add sqs --kind aws --url https://sqs.ap-northeast-1.amazonaws.com \
+  --secret AWS_SECRET_ACCESS_KEY --meta region=ap-northeast-1 --meta service=sqs \
+  --meta access_key_id_secret=AWS_ACCESS_KEY_ID
+```
+
 ### 2.10 AI クライアントの権限
 
 判定は クライアント × プロジェクト × 環境 × 接続 × 操作 (READ / WRITE / DELETE) ごとに
@@ -247,7 +267,27 @@ Secret を返すツールはありません。「管理者が許可した」と 
 EnvFish のルールだけです。Codex など別クライアントは `--client codex` のように名前を変えて登録すると、
 権限と監査ログがクライアントごとに分かれます。
 
-### 2.12 マスターキーを OS Keychain に移す
+### 2.12 漏えいを検査する
+
+```bash
+envfish scan                    # カレントディレクトリ。選択中の環境の Secret を対象
+envfish scan ~/works/my-app --all-environments
+```
+
+保存済みの Secret の値がファイル内に現れていないか、`.env` が git に追跡されていないかを調べます。
+値そのものは表示せず、`ファイル:行  変数名` だけを出します。見つかると終了コード 2 なので、
+pre-commit フックや CI にも組み込めます。
+
+### 2.13 Local Agent
+
+```bash
+envfish agent          # <データディレクトリ>/agent.sock で待ち受け (0600)
+envfish agent --ping   # 起動確認
+```
+
+一覧・承認・監査・権限判定を JSON 行で提供します。Secret を返す要求は存在しません。
+
+### 2.14 マスターキーを OS Keychain に移す
 
 ```bash
 envfish vault status
@@ -280,7 +320,7 @@ CLI と Desktop は同じデータディレクトリを読むため、片方で�
 |---|---|
 | プロジェクト | 一覧、登録 (名前とローカルパス)、カードから詳細へ |
 | プロジェクト詳細 › 環境 | 環境の追加 (development / staging / production はクイック追加)、削除 |
-| プロジェクト詳細 › 変数 | 環境を切り替えながら PUBLIC / SECRET の追加・削除。SECRET はパスワード欄で入力し、保存後は `••••••••` 表示のみ。`.env` の貼り付け取り込みと `.env.example` のコピー |
+| プロジェクト詳細 › 変数 | 環境を切り替えながら PUBLIC / SECRET の追加・削除。SECRET はパスワード欄で入力し、保存後は `••••••••` 表示のみ。`.env` のファイル選択または貼り付けによる取り込みと `.env.example` のコピー |
 | 接続 | 環境ごとの接続一覧と追加 (種別・URL・認証情報の SECRET 名・方式) |
 | AI アクセス | 保留中の承認要求 (承認 / 拒否)、AI クライアントの登録、READ / WRITE / DELETE × ALLOW / ASK / DENY のマトリクス、明示ルールの一覧 |
 | アクティビティ | 監査ログ (時刻・クライアント・PJ/環境・接続・操作・結果) |
@@ -317,11 +357,10 @@ CLI と Desktop は同じデータディレクトリを読むため、片方で�
 
 | 機能 | 状態 |
 |---|---|
-| AWS (SigV4 / SSO)、Cloudflare、Vercel、GitHub など個別認証の Connector | 未実装。静的トークンのサービスは `generic_http` で利用可 |
-| Local Agent のソケット通信 | 未実装 (各プロセスが SQLite を共有) |
-| Secret の手動 Reveal (Touch ID / Windows Hello 付き、人間のみ) | 未実装 |
-| クリップボード自動消去、ローテーション支援、Git の Secret スキャン | 未実装 |
-| Desktop でのファイル選択による `.env` 取り込み | 未実装 (貼り付けは可。CLI はファイル可) |
+| AWS SSO / AssumeRole | 未実装 (静的アクセスキーの SigV4 は対応) |
+| Secret の手動 Reveal (Touch ID / Windows Hello 付き、人間のみ) と、それに伴うクリップボード自動消去 | 未実装 |
+| Windows の名前付きパイプ (Local Agent) | 未実装 |
+| Playwright による E2E テスト | 未実装 (Vitest の単体テストはあり) |
 
 ---
 

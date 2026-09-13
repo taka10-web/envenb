@@ -1381,6 +1381,7 @@ dependencies = [
  "clap",
  "crossterm",
  "envfish-core",
+ "envfish-daemon",
  "envfish-mcp",
  "secrecy",
  "serde",
@@ -1416,6 +1417,8 @@ version = "0.1.0"
 dependencies = [
  "envfish-core",
  "serde",
+ "serde_json",
+ "tempfile",
  "thiserror 2.0.20",
  "tokio",
  "tracing",

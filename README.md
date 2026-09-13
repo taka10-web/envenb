@@ -134,7 +134,9 @@ and `state.json` (current project/environment ids for the CLI). Never commit it.
 | `envfish run <cmd...>` | run a command with the environment's variables **and decrypted secrets** injected into the child only |
 | `envfish import [.env] [--yes] [--dry-run]` | import a `.env` with PUBLIC/SECRET classification (confirmed per variable on a TTY) |
 | `envfish export-example [.env.example]` | write a `.env.example` (secrets blank) |
-| `envfish connection list \| add <name> --kind k --url u --secret SECRET_NAME [--auth style] \| remove <name>` | external service connections; the credential is the *name* of a SECRET |
+| `envfish connection list \| add <name> --kind k --url u --secret SECRET_NAME [--auth style] [--meta k=v]... \| remove <name>` | external service connections (`generic_http`, `openai`, `supabase`, `cloudflare`, `vercel`, `github`, `aws`); the credential is the *name* of a SECRET |
+| `envfish scan [dir] [--all-environments]` | report files that contain a stored secret value (value never printed) and `.env` files tracked by git; exit 2 on findings |
+| `envfish agent [--ping]` | run the Local Agent on a Unix socket (`<data dir>/agent.sock`, mode 0600) |
 | `envfish ai clients \| register <name> [--kind k]` | AI clients (also auto-registered by `envfish mcp`) |
 | `envfish ai check [--client c] [--connection c]` | effective READ / WRITE / DELETE decisions for the current scope |
 | `envfish ai permit <ACTION> <ALLOW\|ASK\|DENY> [--client c] [--connection c] [--all-environments]` | set a rule |
@@ -177,6 +179,26 @@ two lines it reserves for itself and restores the cursor, so command output
 is never corrupted, and it has no access to vault data.
 
 ---
+
+### Connection kinds
+
+| kind | default base URL | auth |
+|---|---|---|
+| `generic_http` | required | `bearer` (or `header:<Name>`, `query:<name>`, `none`) |
+| `openai` | `https://api.openai.com/v1` | `bearer` |
+| `supabase` | required (`https://<ref>.supabase.co`) | `apikey` + `Authorization: Bearer` |
+| `cloudflare` | `https://api.cloudflare.com/client/v4` | `bearer` |
+| `vercel` | `https://api.vercel.com` | `bearer` |
+| `github` | `https://api.github.com` | `bearer` |
+| `aws` | required (service endpoint) | SigV4, signed in the Broker. Needs `--meta region=… --meta service=… --meta access_key_id_secret=<SECRET name>`; `--secret` is the secret access key |
+
+```bash
+printf '%s' "$AWS_ACCESS_KEY_ID"     | envfish var set-secret AWS_ACCESS_KEY_ID
+printf '%s' "$AWS_SECRET_ACCESS_KEY" | envfish var set-secret AWS_SECRET_ACCESS_KEY
+envfish connection add sqs --kind aws --url https://sqs.ap-northeast-1.amazonaws.com \
+  --secret AWS_SECRET_ACCESS_KEY --meta region=ap-northeast-1 --meta service=sqs \
+  --meta access_key_id_secret=AWS_ACCESS_KEY_ID
+```
 
 ## Using EnvFish from Claude Code
 
@@ -250,10 +272,11 @@ until a human resolves the approval row (Desktop / CLI) or it times out, and
 writes an audit entry for every outcome. The tool list has no secret-returning
 tool, and the test suite asserts that.
 
-**daemon** keeps the Local Agent vocabulary (`AgentRequest` / `AgentResponse`)
-for a future socket transport. Today every process (CLI, desktop, MCP server)
-links `envfish-core` directly and shares the SQLite file; approvals are
-coordinated through the `approvals` table.
+**daemon** is the Local Agent: `envfish agent` serves newline-delimited JSON
+over a `0600` Unix domain socket (listing, approvals, audit, permission
+decisions — no secret-returning request). The desktop app and MCP server still
+link `envfish-core` directly today; the socket lets other local tools
+coordinate without touching SQLite. Windows named pipes are not implemented.
 
 **desktop** has Projects (environments, variables, `.env` import,
 `.env.example` copy), Connections, AI Access (pending approvals, clients,
@@ -306,21 +329,19 @@ agree; strings live in `src/lib/i18n.tsx`.
 
 ## Not implemented yet
 
-- Connectors with provider-specific auth flows: AWS (SigV4 / SSO), Cloudflare,
-  Vercel, GitHub. Anything with a static token already works through
-  `generic_http`.
-- Local Agent socket transport (UDS / Named Pipe); processes share SQLite today.
-- Human-only secret reveal with Touch ID / Windows Hello.
-- Clipboard auto-clear, secret rotation helpers, git secret scanning.
-- Desktop `.env` file picker (paste works; the CLI reads files).
-- Frontend tests (Vitest / Playwright) and CI workflow.
+- Human-only secret reveal gated by Touch ID / Windows Hello (and the clipboard
+  auto-clear that goes with it). Until the OS authentication is wired in, there
+  is intentionally no reveal at all.
+- AWS SSO / assumed-role credential flows (static access keys work via SigV4).
+- Windows named-pipe transport for the Local Agent.
+- Playwright end-to-end tests (Vitest unit tests exist).
 
-## Suggested next steps
+## CI / releases
 
-1. AWS connector (SigV4 signing inside the Broker) and `aws_logs` style tools.
-2. Local Agent over a socket so the MCP server does not need direct DB access.
-3. Touch ID gated reveal for humans in the desktop app.
-4. GitHub Actions: `cargo test`, `pnpm typecheck`, Tauri bundle on tag.
+- `.github/workflows/ci.yml`: `cargo fmt` / `clippy -D warnings` / `cargo test`
+  on Linux and macOS, plus `pnpm typecheck` / `pnpm test` / desktop build.
+- `.github/workflows/release.yml`: on a `v*` tag, builds Tauri bundles
+  (macOS arm64 / x86_64, Linux, Windows) and CLI tarballs into a draft release.
 
 ## Development notes
 
@@ -365,6 +386,10 @@ Broker 経由で許可された操作だけを実行させるための開発者�
 - マスターキーの OS Keychain 保存 (`envfish vault key-backend keychain`)
 - 設定 (言語 ja / en / system、テーマ light / dark / system) を CLI と Desktop で共有
 - ドット絵の金魚 (赤・錦・黒出目金) を CLI の節目コマンドで表示。非 TTY / CI / `--json` / `--no-animation` では出さず、`NO_COLOR` 対応
+- Connector 追加: Cloudflare / Vercel / GitHub (Bearer)、AWS (SigV4 署名を Broker 内で実施。AWS 公式のテストベクタで検証)
+- `envfish scan`: 作業ツリー内に Secret の値が漏れていないか、追跡中の `.env` が無いかを検査 (値は表示しない)
+- `envfish agent`: Local Agent を Unix ソケット (0600) で起動
+- GitHub Actions: CI (fmt / clippy / test / typecheck / vitest / build) とタグ時のリリースビルド
 - Desktop でも同じドット金魚を使用。ヘッダー・空状態に加え、読み込み中や保存中は 2 匹が泳ぐローディング表示 (`GoldfishLoader` / `GoldfishInline`)。アプリアイコンも同じスプライト
 
 **セキュリティ上の判断**
@@ -381,4 +406,4 @@ Broker 経由で許可された操作だけを実行させるための開発者�
 claude mcp add envfish -- envfish mcp --client claude-code
 ```
 
-**未実装**: AWS / Cloudflare / Vercel など個別認証の Connector、Local Agent のソケット通信、Touch ID 付きの手動 Reveal、フロントエンドテストと CI。詳細は上記英語セクション参照。
+**未実装**: Touch ID / Windows Hello 付きの手動 Reveal (OS 認証を組み込むまでは Reveal 自体を置かない方針)、AWS SSO / AssumeRole、Windows の名前付きパイプ、Playwright E2E。詳細は上記英語セクション参照。

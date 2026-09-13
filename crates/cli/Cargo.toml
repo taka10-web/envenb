@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 envfish-core = { workspace = true }
 envfish-mcp = { workspace = true }
+envfish-daemon = { workspace = true }
 tokio = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }

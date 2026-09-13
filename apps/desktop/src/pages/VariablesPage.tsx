@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { ClipboardCopy, FileDown, Lock, Plus, Trash2, X } from "lucide-react";
+import { ClipboardCopy, FileDown, FolderOpen, Lock, Plus, Trash2, X } from "lucide-react";
 import { Badge, Button, cn, GoldfishInline, GoldfishLoader, Input, Label } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
 import type { DotenvPreview, ImportReport, Project, VariableKind } from "../lib/types";
@@ -218,9 +218,11 @@ function DotenvImportPanel({ environmentId, onImported }: { environmentId: strin
   const [rows, setRows] = useState<Row[] | null>(null);
   const [invalid, setInvalid] = useState<number[]>([]);
   const [report, setReport] = useState<ImportReport | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const preview = useMutation({
-    mutationFn: () => api.previewDotenv(text),
+    mutationFn: (source: string) => api.previewDotenv(source),
     onSuccess: (p) => {
       setReport(null);
       setInvalid(p.invalid_lines);
@@ -242,11 +244,23 @@ function DotenvImportPanel({ environmentId, onImported }: { environmentId: strin
       setReport(r);
       setRows(null);
       setText("");
+      setFileName(null);
       onImported();
     },
   });
 
   const setKindAt = (i: number, kind: VariableKind) => setRows((rs) => rs?.map((r, j) => (j === i ? { ...r, kind } : r)) ?? null);
+
+  // Pure web API: the file never leaves the webview; its text is only pasted into the textarea.
+  const onFileChosen = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const content = await file.text();
+    setText(content);
+    setFileName(file.name);
+    if (content.trim()) preview.mutate(content);
+  };
 
   return (
     <div className="mb-6 rounded-lg border bg-card p-4">
@@ -264,7 +278,12 @@ function DotenvImportPanel({ environmentId, onImported }: { environmentId: strin
         <p className="text-xs text-muted-foreground">{t("vars.import.hint")}</p>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" variant="secondary" onClick={() => preview.mutate()} disabled={!text.trim() || preview.isPending}>
+        <input ref={fileInput} type="file" accept=".env,.env.*,text/plain" hidden data-testid="dotenv-file" onChange={(e) => void onFileChosen(e)} />
+        <Button type="button" size="sm" variant="outline" onClick={() => fileInput.current?.click()} disabled={preview.isPending}>
+          <FolderOpen className="h-3.5 w-3.5" /> {t("vars.import.chooseFile")}
+        </Button>
+        {fileName && <span className="font-mono text-xs text-muted-foreground">{t("vars.import.fileLoaded", { name: fileName })}</span>}
+        <Button type="button" size="sm" variant="secondary" onClick={() => preview.mutate(text)} disabled={!text.trim() || preview.isPending}>
           {preview.isPending && <GoldfishInline />} {t("vars.import.preview")}
         </Button>
         {rows && rows.length > 0 && (

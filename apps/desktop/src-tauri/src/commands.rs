@@ -233,6 +233,8 @@ pub struct NewConnectionInput {
     pub base_url: Option<String>,
     pub auth_secret: Option<String>,
     pub auth_style: Option<String>,
+    /// Non-secret JSON. For `aws`: `{ region, service, access_key_id_secret }`.
+    pub metadata: Option<serde_json::Value>,
 }
 
 #[tauri::command]
@@ -249,7 +251,7 @@ pub async fn create_connection(
             base_url: input.base_url,
             auth_secret: input.auth_secret,
             auth_style: input.auth_style,
-            metadata: None,
+            metadata: input.metadata,
         })
         .await
         .map_err(map_err)

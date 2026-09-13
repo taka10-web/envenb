@@ -47,8 +47,27 @@ pub async fn run(ctx: &Ctx, command: ConnectionCommand) -> anyhow::Result<()> {
             url,
             secret,
             auth,
+            meta,
         } => {
             let kind: ConnectionKind = kind.parse().map_err(anyhow::Error::msg)?;
+            let mut metadata = serde_json::Map::new();
+            for pair in meta {
+                let (k, v) = pair.split_once('=').ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "{} {pair}",
+                        tr("--meta expects KEY=VALUE, got", "--meta は KEY=VALUE 形式です:")
+                    )
+                })?;
+                metadata.insert(
+                    k.trim().to_string(),
+                    serde_json::Value::String(v.trim().to_string()),
+                );
+            }
+            let metadata = if metadata.is_empty() {
+                None
+            } else {
+                Some(serde_json::Value::Object(metadata))
+            };
             let conn = ctx
                 .app
                 .create_connection(NewConnection {
@@ -58,7 +77,7 @@ pub async fn run(ctx: &Ctx, command: ConnectionCommand) -> anyhow::Result<()> {
                     base_url: url,
                     auth_secret: secret,
                     auth_style: auth,
-                    metadata: None,
+                    metadata,
                 })
                 .await?;
             if ctx.json {

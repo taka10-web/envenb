@@ -85,6 +85,8 @@ export const api = {
     base_url: string | null;
     auth_secret: string | null;
     auth_style: string | null;
+    /** Non-secret extras. For aws: { region, service, access_key_id_secret }. */
+    metadata?: Record<string, string> | null;
   }) => call("create_connection", ConnectionSchema, { input }),
   deleteConnection: (connectionId: string) => call("delete_connection", z.null(), { connectionId }),
 
