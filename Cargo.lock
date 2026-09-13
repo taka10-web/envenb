@@ -1358,11 +1358,15 @@ dependencies = [
 name = "envfish-broker"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "envfish-core",
+ "hex",
+ "hmac 0.12.1",
  "reqwest",
  "secrecy",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "thiserror 2.0.20",
  "tokio",
  "tracing",

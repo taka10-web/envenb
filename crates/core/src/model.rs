@@ -83,6 +83,16 @@ pub enum ConnectionKind {
     Openai,
     /// Supabase project (`apikey` + `Authorization: Bearer` headers, PostgREST under `/rest/v1`).
     Supabase,
+    /// Cloudflare API (`Authorization: Bearer <api token>`).
+    Cloudflare,
+    /// Vercel REST API (`Authorization: Bearer <token>`).
+    Vercel,
+    /// GitHub REST API (`Authorization: Bearer <token>`, fine-grained or classic PAT).
+    Github,
+    /// AWS service endpoint signed with SigV4. `auth_secret` = secret access key;
+    /// `metadata.access_key_id_secret` = name of the SECRET holding the access key id;
+    /// `metadata.region` and `metadata.service` select the signing scope.
+    Aws,
 }
 
 impl ConnectionKind {
@@ -91,22 +101,39 @@ impl ConnectionKind {
             ConnectionKind::GenericHttp => "generic_http",
             ConnectionKind::Openai => "openai",
             ConnectionKind::Supabase => "supabase",
+            ConnectionKind::Cloudflare => "cloudflare",
+            ConnectionKind::Vercel => "vercel",
+            ConnectionKind::Github => "github",
+            ConnectionKind::Aws => "aws",
         }
     }
+
+    pub const ALL: [ConnectionKind; 7] = [
+        ConnectionKind::GenericHttp,
+        ConnectionKind::Openai,
+        ConnectionKind::Supabase,
+        ConnectionKind::Cloudflare,
+        ConnectionKind::Vercel,
+        ConnectionKind::Github,
+        ConnectionKind::Aws,
+    ];
 
     /// Base URL used when the user omits one.
     pub fn default_base_url(self) -> Option<&'static str> {
         match self {
             ConnectionKind::Openai => Some("https://api.openai.com/v1"),
+            ConnectionKind::Cloudflare => Some("https://api.cloudflare.com/client/v4"),
+            ConnectionKind::Vercel => Some("https://api.vercel.com"),
+            ConnectionKind::Github => Some("https://api.github.com"),
             _ => None,
         }
     }
 
     pub fn default_auth_style(self) -> &'static str {
         match self {
-            ConnectionKind::GenericHttp => "bearer",
-            ConnectionKind::Openai => "bearer",
             ConnectionKind::Supabase => "supabase",
+            ConnectionKind::Aws => "sigv4",
+            _ => "bearer",
         }
     }
 }
@@ -118,6 +145,10 @@ impl std::str::FromStr for ConnectionKind {
             "generic_http" | "http" | "generic" => Ok(ConnectionKind::GenericHttp),
             "openai" => Ok(ConnectionKind::Openai),
             "supabase" => Ok(ConnectionKind::Supabase),
+            "cloudflare" => Ok(ConnectionKind::Cloudflare),
+            "vercel" => Ok(ConnectionKind::Vercel),
+            "github" => Ok(ConnectionKind::Github),
+            "aws" => Ok(ConnectionKind::Aws),
             other => Err(format!("unknown connection kind: {other}")),
         }
     }

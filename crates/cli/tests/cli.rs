@@ -27,10 +27,7 @@ fn project_add_and_list() {
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path();
 
-    let (ok, out, err) = run(
-        home,
-        &["project", "add", "my-app", "--path", "/tmp/my-app"],
-    );
+    let (ok, out, err) = run(home, &["project", "add", "my-app", "--path", "/tmp/my-app"]);
     assert!(ok, "stderr: {err}");
     assert!(out.contains("Registered project my-app"));
 

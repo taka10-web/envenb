@@ -29,7 +29,16 @@ import {
 
 async function call<T>(cmd: string, schema: z.ZodType<T>, args?: Record<string, unknown>): Promise<T> {
   const raw = await invoke(cmd, args);
-  return schema.parse(raw);
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    // Name the command so a contract mismatch is diagnosable from the UI.
+    const shape = Array.isArray(raw) ? "array" : raw === null ? "null" : typeof raw;
+    const detail = parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+    const err = new Error(`${cmd}: unexpected response (${shape}) — ${detail}`);
+    if (import.meta.env.DEV) console.error(err, raw);
+    throw err;
+  }
+  return parsed.data;
 }
 
 export const api = {

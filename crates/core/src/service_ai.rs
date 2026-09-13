@@ -264,6 +264,25 @@ impl EnvFish {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| input.kind.default_auth_style().to_string());
+        let metadata = input.metadata.clone().unwrap_or_else(|| serde_json::json!({}));
+        if input.kind == ConnectionKind::Aws {
+            for key in ["region", "service", "access_key_id_secret"] {
+                if metadata
+                    .get(key)
+                    .and_then(|v| v.as_str())
+                    .is_none_or(str::is_empty)
+                {
+                    return Err(CoreError::InvalidName(format!(
+                        "aws connections require metadata.{key}"
+                    )));
+                }
+            }
+            let id_secret = metadata["access_key_id_secret"].as_str().unwrap_or_default();
+            match repo::find_variable_kind(self.pool(), &env.id, id_secret).await? {
+                Some((_, VariableKind::Secret)) => {}
+                _ => return Err(CoreError::VariableNotFound(id_secret.to_string())),
+            }
+        }
         let now = Utc::now();
         let conn = Connection {
             id: uuid::Uuid::new_v4().to_string(),
@@ -274,7 +293,7 @@ impl EnvFish {
             base_url,
             auth_secret: input.auth_secret,
             auth_style,
-            metadata: input.metadata.unwrap_or_else(|| serde_json::json!({})),
+            metadata,
             created_at: now,
             updated_at: now,
         };

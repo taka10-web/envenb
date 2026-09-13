@@ -341,10 +341,7 @@ mod tests {
     #[tokio::test]
     async fn project_crud_and_resolution() {
         let app = app().await;
-        let p = app
-            .create_project("my-app", Some("/tmp/my-app"))
-            .await
-            .unwrap();
+        let p = app.create_project("my-app", Some("/tmp/my-app")).await.unwrap();
         assert_eq!(app.list_projects().await.unwrap().len(), 1);
         assert_eq!(app.resolve_project("my-app").await.unwrap().id, p.id);
         assert_eq!(app.resolve_project(&p.id).await.unwrap().id, p.id);

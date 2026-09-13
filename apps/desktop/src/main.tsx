@@ -7,6 +7,20 @@ import { I18nProvider } from "./lib/i18n";
 import { ThemeProvider } from "./lib/theme";
 import "./index.css";
 
+if (import.meta.env.DEV) {
+  const report = (kind: string, detail: unknown) => {
+    const text = detail instanceof Error ? `${detail.message}` : String(detail);
+    void fetch("/__envfish_log", { method: "POST", body: `${kind}: ${text}` }).catch(() => {});
+  };
+  window.addEventListener("error", (e) => report("error", e.error ?? e.message));
+  window.addEventListener("unhandledrejection", (e) => report("unhandledrejection", e.reason));
+  const origError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    report("console.error", args.map((a) => (a instanceof Error ? a.message : typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+    origError(...args);
+  };
+}
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
