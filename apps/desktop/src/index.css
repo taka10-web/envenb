@@ -26,23 +26,24 @@
 /* Dark tokens are class-based so the app can follow the user's setting
    (light / dark / system). `ThemeProvider` toggles `.dark` on <html>. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.195 0 0);
-  --card-foreground: oklch(0.985 0 0);
+  /* Blue-tinted slate neutrals (hue 250) instead of pure grey. */
+  --background: oklch(0.17 0.025 250);
+  --foreground: oklch(0.96 0.01 250);
+  --card: oklch(0.215 0.028 250);
+  --card-foreground: oklch(0.96 0.01 250);
   --primary: oklch(0.72 0.11 195);
   --primary-foreground: oklch(0.16 0.02 195);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.29 0.03 250);
+  --secondary-foreground: oklch(0.96 0.01 250);
+  --muted: oklch(0.29 0.03 250);
+  --muted-foreground: oklch(0.72 0.02 250);
+  --accent: oklch(0.29 0.03 250);
+  --accent-foreground: oklch(0.96 0.01 250);
   --destructive: oklch(0.637 0.237 25.331);
-  --border: oklch(0.3 0 0);
-  --input: oklch(0.3 0 0);
+  --border: oklch(0.32 0.03 250);
+  --input: oklch(0.32 0.03 250);
   --ring: oklch(0.72 0.11 195);
-  --sidebar: oklch(0.17 0 0);
+  --sidebar: oklch(0.195 0.027 250);
   color-scheme: dark;
 }
 
