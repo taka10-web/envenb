@@ -129,6 +129,16 @@ pub enum Command {
         dry_run: bool,
     },
     #[command(about = tr(
+        "Write a real .env file (values included) for tools that cannot use `envfish run`. 0600, refused if git tracks the path",
+        "実値入りの .env を書き出す (`envfish run` が使えないツール向け)。0600 で作成し、git 追跡中のパスには書かない",
+    ))]
+    ExportEnv {
+        #[arg(value_name = "FILE", default_value = ".env.local")]
+        file: String,
+        #[arg(long, help = tr("Overwrite an existing file", "既存ファイルを上書き"))]
+        force: bool,
+    },
+    #[command(about = tr(
         "Write a .env.example for the current environment (secrets blank)",
         "現在の環境の .env.example を出力 (Secret は空欄)",
     ))]

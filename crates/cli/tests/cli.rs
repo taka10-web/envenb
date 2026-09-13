@@ -455,3 +455,45 @@ fn credentials_store_copy_guard_and_run_injection() {
         );
     }
 }
+
+#[test]
+fn export_env_writes_real_values_with_guard_rails() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+    assert!(run(home, &["project", "add", "my-app"]).0);
+    assert!(run(home, &["env", "development", "--create"]).0);
+    assert!(run(home, &["var", "set", "APP_URL", "http://localhost:3000"]).0);
+    let mut child = envfish(home)
+        .args(["var", "set-secret", "API_KEY"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"sk-EXPORT with space")
+        .unwrap();
+    assert!(child.wait_with_output().unwrap().status.success());
+
+    let target = home.join("out").join(".env.local");
+    std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+    let (ok, _, err) = run(home, &["export-env", target.to_str().unwrap()]);
+    assert!(ok, "{err}");
+    let text = std::fs::read_to_string(&target).unwrap();
+    assert!(text.contains("APP_URL=http://localhost:3000"));
+    assert!(text.contains("API_KEY=\"sk-EXPORT with space\""));
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(&target).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+    // Existing file needs --force.
+    let (ok, _, err) = run(home, &["export-env", target.to_str().unwrap()]);
+    assert!(!ok && err.contains("--force"));
+    assert!(run(home, &["export-env", target.to_str().unwrap(), "--force"]).0);
+}

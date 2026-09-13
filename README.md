@@ -134,6 +134,7 @@ and `state.json` (current project/environment ids for the CLI). Never commit it.
 | `envfish run <cmd...>` | run a command with the environment's variables **and decrypted secrets** injected into the child only |
 | `envfish import [.env] [--yes] [--dry-run]` | import a `.env` with PUBLIC/SECRET classification (confirmed per variable on a TTY) |
 | `envfish export-example [.env.example]` | write a `.env.example` (secrets blank) |
+| `envfish export-env [.env.local] [--force]` | write a real dotenv file (values included, mode 0600) for tools that only read files; refused if git tracks the path |
 | `envfish connection list \| add <name> --kind k --url u --secret SECRET_NAME [--auth style] [--meta k=v]... \| remove <name>` | external service connections (`generic_http`, `openai`, `supabase`, `cloudflare`, `vercel`, `github`, `aws`); the credential is the *name* of a SECRET |
 | `envfish cred list \| add <name> --kind account\|ssh\|database\|file [--field k=v \| k=@file \| k=-]... \| show \| set \| copy [--field f] \| remove` | structured credentials for humans: test accounts (with TOTP), SSH targets, databases, files/certificates |
 | `envfish ssh <name> [-- args]` | SSH with a stored key (0600 temp file, removed on exit) |

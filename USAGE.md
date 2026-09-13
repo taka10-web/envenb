@@ -171,6 +171,19 @@ envfish export-example           # .env.example を出力 (SECRET は空欄)
 `user:pass@host` を含む URL は SECRET、`*_KEY` は「要確認」として SECRET を提案します。
 取り込み後は `.env` を `.gitignore` に入れ、削除を検討してください。
 
+**`.env.local` はどうするか**
+
+1. 取り込む: `envfish import .env.local` (development など対象の環境を選んでから)
+2. ファイルを消す、または `.gitignore` に入れる
+3. アプリは `envfish run pnpm dev` で起動する。Next.js / Vite などは `.env.local` より環境変数を優先するため挙動は変わりません
+
+ファイルしか読めないツール (エディタ拡張など) のために実値のファイルが必要なら、書き戻せます。
+
+```bash
+envfish export-env .env.local          # 0600 で作成。git 追跡中のパスには書かない
+envfish export-env .env.local --force  # 既存ファイルを上書き
+```
+
 ### 2.8 Secret を注入してコマンドを実行する
 
 ```bash

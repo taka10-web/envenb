@@ -103,6 +103,7 @@ pub async fn run(args: Cli, core: envfish_core::Result<EnvFish>) -> anyhow::Resu
         Command::Ssh { name, args } => cred::ssh(&ctx, &name, args).await,
         Command::Import { file, yes, dry_run } => dotenv::import(&ctx, &file, yes, dry_run).await,
         Command::ExportExample { file } => dotenv::export_example(&ctx, &file).await,
+        Command::ExportEnv { file, force } => dotenv::export_env(&ctx, &file, force).await,
         Command::Connection { command } => connection::run(&ctx, command).await,
         Command::Ai { command } => ai::run(&ctx, command).await,
         Command::Activity { limit } => ai::activity(&ctx, limit).await,
