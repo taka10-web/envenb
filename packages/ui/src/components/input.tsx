@@ -6,7 +6,7 @@ export function Input({ className, type, ...props }: React.InputHTMLAttributes<H
     <input
       type={type}
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-9 w-full border-2 border-input bg-background px-3 py-1 text-sm shadow-[inset_2px_2px_0_0_color-mix(in_oklch,var(--color-foreground)_12%,transparent)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

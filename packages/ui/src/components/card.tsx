@@ -4,7 +4,7 @@ import { cn } from "../lib/cn";
 type DivProps = React.HTMLAttributes<HTMLDivElement>;
 
 export function Card({ className, ...props }: DivProps) {
-  return <div className={cn("rounded-lg border border-border bg-card text-card-foreground shadow-sm", className)} {...props} />;
+  return <div className={cn("border-2 border-border bg-card text-card-foreground shadow-[4px_4px_0_0_var(--color-border)]", className)} {...props} />;
 }
 export function CardHeader({ className, ...props }: DivProps) {
   return <div className={cn("flex flex-col space-y-1.5 p-5", className)} {...props} />;

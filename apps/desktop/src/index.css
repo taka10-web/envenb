@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @source "../../../packages/ui/src";
 
+/* DotGothic16 (SIL OFL 1.1) — bundled pixel font for the retro look. */
+@font-face {
+  font-family: "DotGothic16";
+  src: url("./assets/fonts/DotGothic16-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -48,6 +57,19 @@
 }
 
 @theme inline {
+  /* Retro: no rounded corners anywhere. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --font-sans: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Hard, offset "block" shadows. */
+  --shadow-block: 4px 4px 0 0 var(--color-border);
+  --shadow-block-sm: 2px 2px 0 0 var(--color-border);
+  --shadow-block-primary: 3px 3px 0 0 var(--color-primary);
+
   /* Goldfish loader: swim left → right with a gentle bob, then wrap around. */
   --animate-swim: swim 1.8s linear infinite;
   --animate-swim-slow: swim 2.6s linear -0.9s infinite;
@@ -84,7 +106,26 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    @apply bg-background text-foreground;
+    font-family: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: none;
+    letter-spacing: 0.01em;
+    /* Faint scanlines for the CRT feel; too subtle to hurt legibility. */
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      color-mix(in oklch, var(--foreground) 3%, transparent) 3px 4px
+    );
+  }
+  h1, h2, h3 {
+    letter-spacing: 0.02em;
+  }
+  code, pre, kbd, .font-mono {
+    -webkit-font-smoothing: auto;
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
 }

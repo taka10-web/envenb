@@ -21,8 +21,10 @@ const NAV: { to: string; label: MessageKey; icon: typeof Folder }[] = [
 
 function navClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-    isActive ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-accent/60",
+    "flex items-center gap-2 border-2 px-3 py-2 text-sm transition-colors",
+    isActive
+      ? "border-foreground bg-accent text-accent-foreground shadow-[2px_2px_0_0_var(--color-foreground)]"
+      : "border-transparent text-muted-foreground hover:border-border hover:bg-accent/60",
   );
 }
 
@@ -30,8 +32,8 @@ export default function App() {
   const { t } = useI18n();
   return (
     <div className="flex h-screen">
-      <aside className="flex w-56 shrink-0 flex-col border-r bg-sidebar">
-        <div className="flex items-center gap-2 px-4 py-4">
+      <aside className="flex w-56 shrink-0 flex-col border-r-2 border-border bg-sidebar">
+        <div className="flex items-center gap-2 border-b-2 border-border px-4 py-4">
           <Goldfish variant="red" size={2} />
           <span className="font-semibold tracking-tight">EnvFish</span>
         </div>
