@@ -9,6 +9,7 @@ import { ErrorNote } from "../components/ErrorNote";
 import { Select } from "../components/Select";
 import { Segmented } from "../components/Segmented";
 import { useI18n } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 const CLIENT_KINDS = ["claude_code", "codex", "other"] as const;
 
@@ -199,7 +200,9 @@ function ClientsSection() {
                       size="icon"
                       aria-label={t("envs.deleteAria", { name: c.name })}
                       onClick={() => {
-                        if (window.confirm(t("ai.clients.confirmDelete", { name: c.name }))) remove.mutate(c.id);
+                        void confirmAsync(t("ai.clients.confirmDelete", { name: c.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) remove.mutate(c.id);
+ });
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -451,7 +454,9 @@ function PermissionsSection({ project }: { project?: Project }) {
                         size="icon"
                         aria-label={t("common.delete")}
                         onClick={() => {
-                          if (window.confirm(t("ai.rules.confirmDelete"))) deletePermission.mutate(p.id);
+                          void confirmAsync(t("ai.rules.confirmDelete"), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) deletePermission.mutate(p.id);
+ });
                         }}
                       >
                         <Trash2 className="h-4 w-4" />

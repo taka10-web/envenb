@@ -10,6 +10,7 @@ import { ErrorNote } from "../components/ErrorNote";
 import { EmptyState } from "../components/EmptyState";
 import { Select } from "../components/Select";
 import { useI18n, type MessageKey } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 const KIND_LABEL_KEY: Record<CredentialKind, MessageKey> = {
   account: "creds.kind.account",
@@ -225,7 +226,9 @@ function EnvironmentCredentials({ project, environment }: { project: Project; en
                   credential={c}
                   onEdit={() => setEditing(c)}
                   onDelete={() => {
-                    if (window.confirm(t("creds.confirmDelete", { name: c.name }))) remove.mutate(c.id);
+                    void confirmAsync(t("creds.confirmDelete", { name: c.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) remove.mutate(c.id);
+ });
                   }}
                 />
               ))}

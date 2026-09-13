@@ -7,6 +7,7 @@ import { api, queryKeys } from "../lib/api";
 import type { Project } from "../lib/types";
 import { ErrorNote } from "../components/ErrorNote";
 import { useI18n } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 const PRESETS = ["development", "staging", "production"];
 
@@ -75,7 +76,9 @@ export function EnvironmentsPage({ project }: { project: Project }) {
                 size="icon"
                 aria-label={t("envs.deleteAria", { name: env.name })}
                 onClick={() => {
-                  if (window.confirm(t("envs.confirmDelete", { name: env.name }))) remove.mutate(env.id);
+                  void confirmAsync(t("envs.confirmDelete", { name: env.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) remove.mutate(env.id);
+ });
                 }}
               >
                 <Trash2 className="h-4 w-4" />

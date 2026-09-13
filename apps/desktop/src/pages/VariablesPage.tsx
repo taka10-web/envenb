@@ -8,6 +8,7 @@ import type { DotenvPreview, ImportReport, Project, VariableKind } from "../lib/
 import { ErrorNote } from "../components/ErrorNote";
 import { Segmented } from "../components/Segmented";
 import { useI18n } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 export function VariablesPage({ project }: { project: Project }) {
   const { t } = useI18n();
@@ -192,7 +193,9 @@ function VariableTable({ environmentId }: { environmentId: string }) {
                     size="icon"
                     aria-label={t("envs.deleteAria", { name: v.name })}
                     onClick={() => {
-                      if (window.confirm(t("vars.confirmDelete", { name: v.name }))) remove.mutate(v.name);
+                      void confirmAsync(t("vars.confirmDelete", { name: v.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) remove.mutate(v.name);
+ });
                     }}
                   >
                     <Trash2 className="h-4 w-4" />

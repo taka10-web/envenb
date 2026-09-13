@@ -11,6 +11,7 @@ import { AiAccessPage } from "./AiAccessPage";
 import { ActivityPage } from "./ActivityPage";
 import { ErrorNote } from "../components/ErrorNote";
 import { useI18n, type MessageKey } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 const TABS: { to: string; label: MessageKey }[] = [
   { to: "environments", label: "tabs.environments" },
@@ -57,7 +58,9 @@ export function ProjectDetailPage() {
           variant="outline"
           size="sm"
           onClick={() => {
-            if (window.confirm(t("projects.confirmDelete", { name: project.name }))) remove.mutate();
+            void confirmAsync(t("projects.confirmDelete", { name: project.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) remove.mutate();
+ });
           }}
           disabled={remove.isPending}
         >

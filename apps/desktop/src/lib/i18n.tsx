@@ -25,6 +25,7 @@ const en = {
 
   "common.loading": "Loading…",
   "common.delete": "Delete",
+  "common.cancel": "Cancel",
   "common.save": "Save",
   "common.name": "Name",
   "common.value": "Value",
@@ -229,6 +230,7 @@ const ja: Record<keyof typeof en, string> = {
 
   "common.loading": "読み込み中…",
   "common.delete": "削除",
+  "common.cancel": "キャンセル",
   "common.save": "保存",
   "common.name": "名前",
   "common.value": "値",

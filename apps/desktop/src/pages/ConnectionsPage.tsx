@@ -10,6 +10,7 @@ import { ErrorNote } from "../components/ErrorNote";
 import { EmptyState } from "../components/EmptyState";
 import { Select } from "../components/Select";
 import { useI18n, type MessageKey } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 const KINDS = CONNECTION_KINDS;
 const KIND_LABEL_KEY: Record<ConnectionKind, MessageKey> = {
@@ -162,7 +163,9 @@ function ProjectConnections({ project }: { project: Project }) {
                 <ConnectionTable
                   connections={list}
                   onDelete={(c) => {
-                    if (window.confirm(t("connections.confirmDelete", { name: c.name }))) remove.mutate(c.id);
+                    void confirmAsync(t("connections.confirmDelete", { name: c.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+ if (ok) remove.mutate(c.id);
+ });
                   }}
                 />
               </CardContent>
