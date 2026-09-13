@@ -1,0 +1,6 @@
+packages:
+  - apps/*
+  - packages/*
+minimumReleaseAgeExclude:
+  - tailwind-merge@3.7.0
+  - zod@4.6.4

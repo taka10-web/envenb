@@ -1,0 +1,23 @@
+[package]
+name = "envfish-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "EnvFish desktop app (Tauri 2)."
+
+[lib]
+name = "envfish_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+envfish-core = { workspace = true }
+tauri = { version = "2", features = [] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+zeroize = { workspace = true }

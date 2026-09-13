@@ -1,0 +1,9 @@
+{
+  "$comment": "Drop into a project's .mcp.json (Claude Code) or the equivalent MCP config of another client. Use a distinct --client name per tool so permissions and the audit log stay separate.",
+  "mcpServers": {
+    "envfish": {
+      "command": "envfish",
+      "args": ["mcp", "--client", "claude-code", "--kind", "claude_code"]
+    }
+  }
+}

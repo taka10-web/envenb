@@ -1,0 +1,26 @@
+[package]
+name = "envfish-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "EnvFish core: domain models, SQLite persistence, and the application service layer."
+
+[dependencies]
+envfish-vault = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+secrecy = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+dirs = { workspace = true }
+
+[features]
+default = ["keychain"]
+keychain = ["envfish-vault/keychain"]
+
+[dev-dependencies]
+tempfile = { workspace = true }

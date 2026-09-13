@@ -1,0 +1,13 @@
+[package]
+name = "envfish-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "EnvFish Local Agent skeleton. Phase 1 defines the boundary only; IPC, Broker and MCP land in later phases."
+
+[dependencies]
+envfish-core = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,24 @@
+[package]
+name = "envfish-vault"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Secret encryption vault for EnvFish (XChaCha20-Poly1305). Master key handling is delegated to a MasterKeyProvider."
+
+[dependencies]
+chacha20poly1305 = { workspace = true }
+rand = { workspace = true }
+secrecy = { workspace = true }
+zeroize = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+keyring = { workspace = true, optional = true }
+
+[features]
+default = []
+# OS credential stores via the `keyring` crate (macOS Keychain, Windows Credential Manager, Linux Secret Service).
+keychain = ["dep:keyring", "keyring/v1"]
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,16 @@
+[package]
+name = "envfish-broker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "EnvFish Secret Broker: performs authenticated HTTP calls on behalf of AI clients without exposing secrets."
+
+[dependencies]
+envfish-core = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+secrecy = { workspace = true }
