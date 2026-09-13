@@ -58,6 +58,7 @@ export function ProjectsPage() {
         <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
           <Goldfish variant="red" size={6} />
           <p className="text-sm">{t("projects.empty")}</p>
+          <Link to="/guide" className="text-sm text-primary underline-offset-4 hover:underline">{t("projects.emptyGuide")}</Link>
         </div>
       )}
 

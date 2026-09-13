@@ -257,7 +257,7 @@ coordinated through the `approvals` table.
 
 **desktop** has Projects (environments, variables, `.env` import,
 `.env.example` copy), Connections, AI Access (pending approvals, clients,
-permission matrix, rules), Activity and Settings (language, theme, vault info).
+permission matrix, rules), Activity, an in-app Guide (bilingual, copyable commands) and Settings (language, theme, vault info).
 Every IPC call goes through `src/lib/api.ts` and is validated with Zod, keeping
 the command surface auditable. Language (日本語 / English / system) and theme
 (light / dark / system) are stored in EnvFish settings, so the CLI and the app
