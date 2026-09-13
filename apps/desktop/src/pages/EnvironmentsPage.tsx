@@ -67,7 +67,7 @@ export function EnvironmentsPage({ project }: { project: Project }) {
           <Card key={env.id}>
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <CardTitle>
-                <Link to={`../variables/${env.id}`} className="hover:underline">
+                <Link to={`/projects/${project.id}/variables/${env.id}`} className="hover:underline">
                   {env.name}
                 </Link>
               </CardTitle>
@@ -86,7 +86,7 @@ export function EnvironmentsPage({ project }: { project: Project }) {
             </CardHeader>
             <CardContent>
               <Button asChild variant="secondary" size="sm">
-                <Link to={`../variables/${env.id}`}>{t("envs.open")}</Link>
+                <Link to={`/projects/${project.id}/variables/${env.id}`}>{t("envs.open")}</Link>
               </Button>
             </CardContent>
           </Card>

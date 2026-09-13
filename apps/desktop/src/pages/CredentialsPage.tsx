@@ -159,7 +159,7 @@ function ProjectCredentials({ project }: { project: Project }) {
     <div>
       <div className="mb-5 flex flex-wrap gap-1">
         {envs.data.map((e) => (
-          <Button key={e.id} size="sm" variant={e.id === env.id ? "default" : "outline"} onClick={() => navigate(`../credentials/${e.id}`)}>
+          <Button key={e.id} size="sm" variant={e.id === env.id ? "default" : "outline"} onClick={() => navigate(`/projects/${project.id}/credentials/${e.id}`)}>
             {e.name}
           </Button>
         ))}

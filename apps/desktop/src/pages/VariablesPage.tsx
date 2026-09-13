@@ -30,7 +30,7 @@ export function VariablesPage({ project }: { project: Project }) {
             key={env.id}
             size="sm"
             variant={env.id === selected ? "default" : "outline"}
-            onClick={() => navigate(`../variables/${env.id}`)}
+            onClick={() => navigate(`/projects/${project.id}/variables/${env.id}`)}
           >
             {env.name}
           </Button>

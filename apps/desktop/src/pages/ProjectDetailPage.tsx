@@ -73,7 +73,7 @@ export function ProjectDetailPage() {
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}
-            to={tab.to}
+            to={`/projects/${project.id}/${tab.to}`}
             className={({ isActive }) =>
               cn(
                 "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
@@ -87,7 +87,7 @@ export function ProjectDetailPage() {
       </nav>
 
       <Routes>
-        <Route index element={<Navigate to="environments" replace />} />
+        <Route index element={<Navigate to={`/projects/${project.id}/environments`} replace />} />
         <Route path="environments" element={<EnvironmentsPage project={project} />} />
         <Route path="variables/:environmentId?" element={<VariablesPage project={project} />} />
         <Route path="connections" element={<ConnectionsPage project={project} />} />
