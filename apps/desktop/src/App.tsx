@@ -1,9 +1,10 @@
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
-import { Activity, BookOpen, Bot, Folder, Plug, Settings } from "lucide-react";
+import { Activity, BookOpen, Bot, Folder, KeyRound, Plug, Settings } from "lucide-react";
 import { cn, Goldfish } from "@envfish/ui";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ConnectionsPage } from "./pages/ConnectionsPage";
+import { CredentialsPage } from "./pages/CredentialsPage";
 import { AiAccessPage } from "./pages/AiAccessPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -13,6 +14,7 @@ import { useI18n, type MessageKey } from "./lib/i18n";
 const NAV: { to: string; label: MessageKey; icon: typeof Folder }[] = [
   { to: "/projects", label: "nav.projects", icon: Folder },
   { to: "/connections", label: "nav.connections", icon: Plug },
+  { to: "/credentials", label: "nav.credentials", icon: KeyRound },
   { to: "/ai-access", label: "nav.aiAccess", icon: Bot },
   { to: "/activity", label: "nav.activity", icon: Activity },
 ];
@@ -62,6 +64,7 @@ export default function App() {
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId/*" element={<ProjectDetailPage />} />
           <Route path="/connections" element={<ConnectionsPage />} />
+          <Route path="/credentials" element={<CredentialsPage />} />
           <Route path="/ai-access" element={<AiAccessPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/activity" element={<ActivityPage />} />

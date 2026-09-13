@@ -5,6 +5,9 @@ import {
   ApprovalSchema,
   AuditEntrySchema,
   ConnectionSchema,
+  CredentialKindSchema,
+  CredentialSchema,
+  FieldSpecSchema,
   DotenvPreviewSchema,
   EnvironmentSchema,
   ImportReportSchema,
@@ -16,6 +19,7 @@ import {
   DecisionSchema,
   type Action,
   type ConnectionKind,
+  type CredentialKind,
   type Decision,
   type Environment,
   type Project,
@@ -117,6 +121,24 @@ export const api = {
 
   // activity
   listAudit: (limit = 200) => call("list_audit", z.array(AuditEntrySchema), { limit }),
+
+  // credentials (accounts / ssh / database / file). Secret fields never come back.
+  listCredentials: (projectId: string) => call("list_credentials", z.array(CredentialSchema), { projectId }),
+  credentialFieldSpecs: () =>
+    call("credential_field_specs", z.array(z.tuple([CredentialKindSchema, z.array(FieldSpecSchema)]))),
+  createCredential: (input: {
+    environment_id: string;
+    kind: CredentialKind;
+    name: string;
+    note: string | null;
+    fields: { field: string; value: string }[];
+  }) => call("create_credential", CredentialSchema, { input }),
+  updateCredentialFields: (credentialId: string, fields: { field: string; value: string }[], note: string | null) =>
+    call("update_credential_fields", CredentialSchema, { credentialId, fields, note }),
+  deleteCredential: (credentialId: string) => call("delete_credential", z.null(), { credentialId }),
+  /** Human-only. Copies to the OS clipboard in Rust; resolves with the auto-clear TTL in seconds. Pass field "totp" for the current one-time code. */
+  copyCredentialField: (credentialId: string, field: string) =>
+    call("copy_credential_field", z.number(), { credentialId, field }),
 };
 
 export const queryKeys = {
@@ -130,4 +152,6 @@ export const queryKeys = {
   permissions: ["permissions"] as const,
   approvals: (pendingOnly: boolean) => ["approvals", pendingOnly] as const,
   audit: ["audit"] as const,
+  credentials: (projectId: string) => ["credentials", projectId] as const,
+  credentialSpecs: ["credential-specs"] as const,
 };

@@ -6,6 +6,7 @@ import { api, queryKeys } from "../lib/api";
 import { EnvironmentsPage } from "./EnvironmentsPage";
 import { VariablesPage } from "./VariablesPage";
 import { ConnectionsPage } from "./ConnectionsPage";
+import { CredentialsPage } from "./CredentialsPage";
 import { AiAccessPage } from "./AiAccessPage";
 import { ActivityPage } from "./ActivityPage";
 import { ErrorNote } from "../components/ErrorNote";
@@ -15,6 +16,7 @@ const TABS: { to: string; label: MessageKey }[] = [
   { to: "environments", label: "tabs.environments" },
   { to: "variables", label: "tabs.variables" },
   { to: "connections", label: "tabs.connections" },
+  { to: "credentials", label: "tabs.credentials" },
   { to: "ai-access", label: "tabs.aiAccess" },
   { to: "activity", label: "tabs.activity" },
 ];
@@ -86,6 +88,7 @@ export function ProjectDetailPage() {
         <Route path="environments" element={<EnvironmentsPage project={project} />} />
         <Route path="variables/:environmentId?" element={<VariablesPage project={project} />} />
         <Route path="connections" element={<ConnectionsPage project={project} />} />
+        <Route path="credentials/:environmentId?" element={<CredentialsPage project={project} />} />
         <Route path="ai-access" element={<AiAccessPage project={project} />} />
         <Route path="activity" element={<ActivityPage project={project} />} />
       </Routes>

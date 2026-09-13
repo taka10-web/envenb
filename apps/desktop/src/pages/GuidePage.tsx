@@ -73,6 +73,19 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         description: "By default the master key is a 0600 file next to the database. Move it into the OS keychain when you are ready.",
         steps: [{ title: "Terminal", body: "The key is copied, read back, and only then is the file removed. Secrets need no re-encryption.", commands: ["envfish vault key-backend keychain"] }],
       },
+      {
+        title: "8. Credentials for humans",
+        description: "Test accounts, SSH targets, database logins and certificates are structured secrets for you, not for the AI. Each copy button hands the value from Rust straight to the clipboard and clears it after 30 seconds.",
+        steps: [
+          { title: "In this app", body: "Credentials → pick the environment, choose a kind (account / ssh / database / file) and fill in the fields. Secret fields are never shown again; use Copy, or Copy code for the current TOTP." },
+          {
+            title: "From the terminal",
+            body: "The same records are available to the CLI, including SSH and wrapped commands that receive the credential as environment variables.",
+            commands: ["envfish cred add my-account --kind account", "envfish cred copy my-account --field password", "envfish ssh bastion", "envfish run --with-credentials -- sqlplus ..."],
+          },
+          { title: "What the AI sees", body: "Only names and non-secret fields, through list_credentials. There is no tool that returns a password, key or file content." },
+        ],
+      },
     ],
     defaults: [
       ["Environment", "READ", "WRITE", "DELETE"],
@@ -141,6 +154,19 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "7. Vault を固める",
         description: "既定ではマスターキーは DB の隣の 0600 ファイルです。準備ができたら OS のキーチェーンへ移します。",
         steps: [{ title: "ターミナル", body: "鍵を書き込んで読み戻せることを確認してからファイルを削除します。Secret の再暗号化は不要です。", commands: ["envfish vault key-backend keychain"] }],
+      },
+      {
+        title: "8. 人が使う資格情報",
+        description: "テストアカウント・SSH 接続先・DB ログイン・証明書は、AI ではなく人が使う構造化された Secret です。コピーボタンは Rust からクリップボードへ直接値を渡し、30 秒後に自動で消去します。",
+        steps: [
+          { title: "このアプリで", body: "「資格情報」→ 環境を選び、種別 (account / ssh / database / file) を選んで項目を入力します。Secret 項目は以後表示されません。必要なときは「コピー」、TOTP は「コードをコピー」を使います。" },
+          {
+            title: "ターミナルで",
+            body: "同じレコードを CLI からも使えます。SSH 接続や、資格情報を環境変数として受け取るコマンドの起動にも対応しています。",
+            commands: ["envfish cred add my-account --kind account", "envfish cred copy my-account --field password", "envfish ssh bastion", "envfish run --with-credentials -- sqlplus ..."],
+          },
+          { title: "AI に見えるもの", body: "list_credentials で見えるのは名前と非 Secret 項目だけです。パスワード・鍵・ファイル内容を返すツールは存在しません。" },
+        ],
       },
     ],
     defaults: [

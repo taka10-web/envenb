@@ -15,6 +15,9 @@ pub enum CoreError {
     #[error("connection not found: {0}")]
     ConnectionNotFound(String),
 
+    #[error("credential not found: {0}")]
+    CredentialNotFound(String),
+
     #[error("ai client not found: {0}")]
     ClientNotFound(String),
 

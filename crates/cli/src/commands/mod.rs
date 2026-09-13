@@ -2,6 +2,7 @@ mod agent;
 mod ai;
 mod config;
 mod connection;
+mod cred;
 mod dotenv;
 mod env;
 mod mcp;
@@ -9,7 +10,7 @@ mod project;
 mod run;
 mod scan;
 mod status;
-mod var;
+pub(crate) mod var;
 mod vault;
 
 use anyhow::Context;
@@ -94,7 +95,12 @@ pub async fn run(args: Cli, core: envfish_core::Result<EnvFish>) -> anyhow::Resu
         Command::Use { project } => project::use_project(&mut ctx, &project).await,
         Command::Env(env_args) => env::run(&mut ctx, env_args).await,
         Command::Var { command } => var::run(&ctx, command).await,
-        Command::Run { command } => run::run(&ctx, command).await,
+        Command::Run {
+            command,
+            with_credentials,
+        } => run::run(&ctx, command, with_credentials).await,
+        Command::Cred { command } => cred::run(&ctx, command).await,
+        Command::Ssh { name, args } => cred::ssh(&ctx, &name, args).await,
         Command::Import { file, yes, dry_run } => dotenv::import(&ctx, &file, yes, dry_run).await,
         Command::ExportExample { file } => dotenv::export_example(&ctx, &file).await,
         Command::Connection { command } => connection::run(&ctx, command).await,

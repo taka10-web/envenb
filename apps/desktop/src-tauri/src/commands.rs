@@ -1,7 +1,7 @@
 use envfish_core::{
-    Action, AiClient, Approval, ApprovalStatus, AuditEntry, Connection, ConnectionKind, Decision,
-    Environment, NewConnection, Permission, PermissionScope, Project, SecretValue, Settings, StatusReport,
-    Variable,
+    Action, AiClient, Approval, ApprovalStatus, AuditEntry, Connection, ConnectionKind, Credential,
+    CredentialFieldInput, CredentialKind, Decision, Environment, NewConnection, NewCredential, Permission,
+    PermissionScope, Project, SecretValue, Settings, StatusReport, Variable,
 };
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -380,4 +380,125 @@ pub async fn resolve_approval(
 #[tauri::command]
 pub async fn list_audit(state: State<'_, AppState>, limit: i64) -> CmdResult<Vec<AuditEntry>> {
     state.core.list_audit(limit).await.map_err(map_err)
+}
+
+// ---- credentials (accounts, SSH, databases, files) ----
+
+#[tauri::command]
+pub async fn list_credentials(state: State<'_, AppState>, project_id: String) -> CmdResult<Vec<Credential>> {
+    state
+        .core
+        .list_project_credentials(&project_id)
+        .await
+        .map_err(map_err)
+}
+
+/// Field layouts per kind, so the UI renders the right form.
+#[tauri::command]
+pub fn credential_field_specs() -> Vec<(CredentialKind, Vec<envfish_core::FieldSpec>)> {
+    CredentialKind::ALL
+        .iter()
+        .map(|k| (*k, k.fields().to_vec()))
+        .collect()
+}
+
+#[derive(Deserialize)]
+pub struct CredentialFieldValue {
+    pub field: String,
+    pub value: String,
+}
+
+#[derive(Deserialize)]
+pub struct NewCredentialInput {
+    pub environment_id: String,
+    pub kind: CredentialKind,
+    pub name: String,
+    pub note: Option<String>,
+    pub fields: Vec<CredentialFieldValue>,
+}
+
+fn into_inputs(fields: Vec<CredentialFieldValue>) -> Vec<CredentialFieldInput> {
+    fields
+        .into_iter()
+        .map(|mut f| {
+            let input = CredentialFieldInput {
+                field: std::mem::take(&mut f.field),
+                value: SecretValue::new(f.value.as_str()),
+            };
+            f.value.zeroize();
+            input
+        })
+        .collect()
+}
+
+/// Plaintext crosses the webview boundary here once; every field is wrapped in
+/// `SecretValue` immediately and the incoming buffers are zeroized.
+#[tauri::command]
+pub async fn create_credential(
+    state: State<'_, AppState>,
+    input: NewCredentialInput,
+) -> CmdResult<Credential> {
+    state
+        .core
+        .create_credential(NewCredential {
+            environment_id: input.environment_id,
+            kind: input.kind,
+            name: input.name,
+            note: input.note,
+            fields: into_inputs(input.fields),
+        })
+        .await
+        .map_err(map_err)
+}
+
+#[tauri::command]
+pub async fn update_credential_fields(
+    state: State<'_, AppState>,
+    credential_id: String,
+    fields: Vec<CredentialFieldValue>,
+    note: Option<String>,
+) -> CmdResult<Credential> {
+    state
+        .core
+        .update_credential_fields(&credential_id, into_inputs(fields), note)
+        .await
+        .map_err(map_err)
+}
+
+#[tauri::command]
+pub async fn delete_credential(state: State<'_, AppState>, credential_id: String) -> CmdResult<()> {
+    state
+        .core
+        .delete_credential(&credential_id)
+        .await
+        .map_err(map_err)
+}
+
+/// Human-only: copy one secret field to the OS clipboard (cleared after 30 s).
+/// The value never returns to the webview. Pass field "totp" for the one-time code.
+#[tauri::command]
+pub async fn copy_credential_field(
+    state: State<'_, AppState>,
+    credential_id: String,
+    field: String,
+) -> CmdResult<u64> {
+    let ttl = envfish_core::clipboard::DEFAULT_TTL;
+    let result = if field == "totp" {
+        let code = state
+            .core
+            .credential_totp(&credential_id)
+            .await
+            .map_err(map_err)?;
+        envfish_core::clipboard::copy_then_clear(&code, ttl)
+    } else {
+        state
+            .core
+            .with_credential_field(&credential_id, &field, |v| {
+                envfish_core::clipboard::copy_then_clear(v, ttl)
+            })
+            .await
+            .map_err(map_err)?
+    };
+    result.map_err(|e| format!("clipboard: {e}"))?;
+    Ok(ttl.as_secs())
 }

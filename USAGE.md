@@ -267,7 +267,48 @@ Secret を返すツールはありません。「管理者が許可した」と 
 EnvFish のルールだけです。Codex など別クライアントは `--client codex` のように名前を変えて登録すると、
 権限と監査ログがクライアントごとに分かれます。
 
-### 2.12 漏えいを検査する
+### 2.12 テストアカウント・SSH・DB・証明書を保存する (Credential)
+
+`NAME=値` に収まらないものは Credential として保存します。種別ごとにフィールドが決まっており、
+Secret のフィールド (ユーザー名・パスワード・鍵・ファイル内容) は 1 つずつ暗号化されます。
+
+| 種別 | フィールド (`*` は必須、太字は Secret) |
+|---|---|
+| `account` | url, **username***, **password***, **totp_secret** |
+| `ssh` | host*, port, user*, **private_key**, **passphrase**, **password** |
+| `database` | engine, host*, port, database, **username***, **password*** |
+| `file` | filename*, **content*** |
+
+```bash
+envfish cred add qa-admin --kind account --field url=https://staging.example.com/login
+#   → username / password / totp_secret は非表示で対話入力 (--field 名=値 でも可)
+envfish cred add bastion --kind ssh --field host=bastion.example.com --field user=deploy \
+  --field private_key=@~/.ssh/id_bastion
+envfish cred add oracle-stg --kind database --field engine=oracle --field host=db.example.com \
+  --field port=1521 --field database=STG
+envfish cred add ca-cert --kind file --field filename=ca.pem --field content=@./ca.pem
+
+envfish cred list                             # Secret は名前のみ表示
+envfish cred show qa-admin
+envfish cred set qa-admin --field password=-  # stdin から更新
+```
+
+**使うとき (人間)**
+
+```bash
+envfish cred copy qa-admin --field password   # クリップボードへ。30 秒後に自動消去 (TTY のみ)
+envfish cred copy qa-admin --field totp       # 現在のワンタイムコード
+envfish ssh bastion -- uptime                 # 鍵を 0600 の一時ファイルに展開し、終了時に削除
+envfish run --with-credentials -- sqlplus "$ENVFISH_CRED_ORACLE_STG_USERNAME/$ENVFISH_CRED_ORACLE_STG_PASSWORD@db.example.com:1521/STG"
+```
+
+`--with-credentials` は `ENVFISH_CRED_<名前>_<フィールド>` (名前・フィールドは大文字化、記号は `_`) と、
+file 種別の `ENVFISH_FILE_<名前>` (一時ファイルのパス) を子プロセスにだけ渡します。
+
+Desktop の「資格情報」画面でも同じ操作ができ、コピーボタンは Rust 側でクリップボードに書くため
+値は画面にも webview にも出ません。AI に見えるのは `list_credentials` の名前と非秘密フィールドだけです。
+
+### 2.13 漏えいを検査する
 
 ```bash
 envfish scan                    # カレントディレクトリ。選択中の環境の Secret を対象
@@ -278,7 +319,7 @@ envfish scan ~/works/my-app --all-environments
 値そのものは表示せず、`ファイル:行  変数名` だけを出します。見つかると終了コード 2 なので、
 pre-commit フックや CI にも組み込めます。
 
-### 2.13 Local Agent
+### 2.14 Local Agent
 
 ```bash
 envfish agent          # <データディレクトリ>/agent.sock で待ち受け (0600)
@@ -287,7 +328,7 @@ envfish agent --ping   # 起動確認
 
 一覧・承認・監査・権限判定を JSON 行で提供します。Secret を返す要求は存在しません。
 
-### 2.14 マスターキーを OS Keychain に移す
+### 2.15 マスターキーを OS Keychain に移す
 
 ```bash
 envfish vault status
@@ -322,6 +363,7 @@ CLI と Desktop は同じデータディレクトリを読むため、片方で�
 | プロジェクト詳細 › 環境 | 環境の追加 (development / staging / production はクイック追加)、削除 |
 | プロジェクト詳細 › 変数 | 環境を切り替えながら PUBLIC / SECRET の追加・削除。SECRET はパスワード欄で入力し、保存後は `••••••••` 表示のみ。`.env` のファイル選択または貼り付けによる取り込みと `.env.example` のコピー |
 | 接続 | 環境ごとの接続一覧と追加 (種別・URL・認証情報の SECRET 名・方式) |
+| 資格情報 | テストアカウント / SSH / DB / ファイルの登録と、フィールド単位のコピー (30 秒で消去)、TOTP コードのコピー |
 | AI アクセス | 保留中の承認要求 (承認 / 拒否)、AI クライアントの登録、READ / WRITE / DELETE × ALLOW / ASK / DENY のマトリクス、明示ルールの一覧 |
 | アクティビティ | 監査ログ (時刻・クライアント・PJ/環境・接続・操作・結果) |
 | 使い方 | このガイドの要約。CLI コマンドはコピー可、既定の判定表付き |

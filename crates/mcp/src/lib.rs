@@ -174,6 +174,15 @@ impl McpServer {
                     VariableKind::Secret => json!({"name": v.name, "kind": "SECRET", "value": null, "note": "value withheld; use call_service"}),
                 }).collect::<Vec<_>>()))
             }
+            "list_credentials" => {
+                let (_project, env) = self.resolve_env(args).await?;
+                let creds = self.core.list_credentials(&env.id).await?;
+                Ok(json!(creds.iter().map(|c| json!({
+                    "name": c.name, "kind": c.kind, "note": c.note,
+                    "fields": c.fields.iter().map(|f| json!({"field": f.field, "secret": f.secret, "value": f.value})).collect::<Vec<_>>(),
+                    "note_for_ai": "secret fields are withheld; ask the user to use them"
+                })).collect::<Vec<_>>()))
+            }
             "call_service" => {
                 let req = BrokerRequest {
                     method: str_arg(args, "method").unwrap_or("GET").to_string(),
@@ -373,6 +382,11 @@ pub fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "list_variables",
             "description": "List variables of an environment. PUBLIC variables include values; SECRET variables are names only.",
+            "inputSchema": { "type": "object", "properties": env_props, "required": ["project", "environment"] }
+        }),
+        json!({
+            "name": "list_credentials",
+            "description": "List stored credentials (test accounts, SSH targets, databases, files) of an environment: names, kinds and non-secret fields such as host or URL. Secret fields are never returned.",
             "inputSchema": { "type": "object", "properties": env_props, "required": ["project", "environment"] }
         }),
         json!({

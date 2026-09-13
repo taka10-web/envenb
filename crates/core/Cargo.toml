@@ -17,10 +17,14 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 sqlx = { workspace = true }
 dirs = { workspace = true }
+hmac = { workspace = true }
+sha1 = "0.10"
+arboard = { workspace = true, optional = true }
 
 [features]
 default = ["keychain"]
 keychain = ["envfish-vault/keychain"]
+clipboard = ["dep:arboard"]
 
 [dev-dependencies]
 tempfile = { workspace = true }

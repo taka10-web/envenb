@@ -363,3 +363,141 @@ pub struct Settings {
     /// `system` | `light` | `dark`
     pub theme: String,
 }
+
+// ---------------------------------------------------------------------------
+// Credentials: structured secrets (accounts, SSH, databases, files)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CredentialKind {
+    /// Login for a website / service used by humans (test accounts).
+    Account,
+    /// SSH target with a private key.
+    Ssh,
+    /// Database connection (SQL*Plus, psql, mysql, ...).
+    Database,
+    /// An opaque file: certificate, private key, kubeconfig, service-account JSON.
+    File,
+}
+
+/// Describes one field of a credential kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct FieldSpec {
+    pub name: &'static str,
+    /// Sealed in the vault when true; stored as plain metadata otherwise.
+    pub secret: bool,
+    pub required: bool,
+    /// Multi-line content (keys, certificates).
+    pub multiline: bool,
+}
+
+const fn f(name: &'static str, secret: bool, required: bool, multiline: bool) -> FieldSpec {
+    FieldSpec {
+        name,
+        secret,
+        required,
+        multiline,
+    }
+}
+
+const ACCOUNT_FIELDS: [FieldSpec; 4] = [
+    f("url", false, false, false),
+    f("username", true, true, false),
+    f("password", true, true, false),
+    f("totp_secret", true, false, false),
+];
+const SSH_FIELDS: [FieldSpec; 6] = [
+    f("host", false, true, false),
+    f("port", false, false, false),
+    f("user", false, true, false),
+    f("private_key", true, false, true),
+    f("passphrase", true, false, false),
+    f("password", true, false, false),
+];
+const DATABASE_FIELDS: [FieldSpec; 6] = [
+    f("engine", false, false, false),
+    f("host", false, true, false),
+    f("port", false, false, false),
+    f("database", false, false, false),
+    f("username", true, true, false),
+    f("password", true, true, false),
+];
+const FILE_FIELDS: [FieldSpec; 2] = [f("filename", false, true, false), f("content", true, true, true)];
+
+impl CredentialKind {
+    pub const ALL: [CredentialKind; 4] = [
+        CredentialKind::Account,
+        CredentialKind::Ssh,
+        CredentialKind::Database,
+        CredentialKind::File,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CredentialKind::Account => "account",
+            CredentialKind::Ssh => "ssh",
+            CredentialKind::Database => "database",
+            CredentialKind::File => "file",
+        }
+    }
+
+    /// Field layout. Usernames are secret too: for a test account the pair is
+    /// what matters, and an AI must not learn either half.
+    pub fn fields(self) -> &'static [FieldSpec] {
+        match self {
+            CredentialKind::Account => &ACCOUNT_FIELDS,
+            CredentialKind::Ssh => &SSH_FIELDS,
+            CredentialKind::Database => &DATABASE_FIELDS,
+            CredentialKind::File => &FILE_FIELDS,
+        }
+    }
+
+    pub fn field(self, name: &str) -> Option<&'static FieldSpec> {
+        self.fields().iter().find(|s| s.name == name)
+    }
+}
+
+impl std::str::FromStr for CredentialKind {
+    type Err = String;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "account" | "login" => Ok(CredentialKind::Account),
+            "ssh" => Ok(CredentialKind::Ssh),
+            "database" | "db" => Ok(CredentialKind::Database),
+            "file" | "cert" | "certificate" => Ok(CredentialKind::File),
+            other => Err(format!("unknown credential kind: {other}")),
+        }
+    }
+}
+
+impl std::fmt::Display for CredentialKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// A stored field as seen by listing consumers: `value` is `None` for secret fields.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CredentialField {
+    pub field: String,
+    pub secret: bool,
+    pub value: Option<String>,
+    /// Whether a value is stored at all (secret fields report presence, not content).
+    pub present: bool,
+}
+
+/// A credential as seen by listing consumers. Serialisable because secret
+/// fields carry no value.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Credential {
+    pub id: String,
+    pub project_id: String,
+    pub environment_id: String,
+    pub kind: CredentialKind,
+    pub name: String,
+    pub note: Option<String>,
+    pub fields: Vec<CredentialField>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}

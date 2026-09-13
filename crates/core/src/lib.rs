@@ -18,6 +18,8 @@
 //!   Human-only reveal and process injection will be added as separate,
 //!   clearly named, non-AI-facing entry points in later phases.
 
+#[cfg(feature = "clipboard")]
+pub mod clipboard;
 mod db;
 pub mod dotenv;
 mod error;
@@ -26,21 +28,26 @@ mod paths;
 pub mod permission;
 mod repo;
 mod repo_ai;
+mod repo_cred;
 mod secret;
 mod service;
 mod service_ai;
+mod service_cred;
 mod state;
+pub mod totp;
 
 pub use db::open_pool;
 pub use error::{CoreError, Result};
 pub use model::{
-    Action, AiClient, Approval, ApprovalStatus, AuditEntry, Connection, ConnectionKind, Decision,
-    Environment, Permission, Project, Settings, Variable, VariableKind,
+    Action, AiClient, Approval, ApprovalStatus, AuditEntry, Connection, ConnectionKind, Credential,
+    CredentialField, CredentialKind, Decision, Environment, FieldSpec, Permission, Project, Settings,
+    Variable, VariableKind,
 };
 pub use paths::Paths;
 pub use secret::SecretValue;
 pub use service::{EnvFish, StatusReport};
 pub use service_ai::{AuditRecord, ImportReport, NewConnection, PermissionScope, ProcessEnv};
+pub use service_cred::{CredentialFieldInput, NewCredential};
 pub use state::CliState;
 
 pub use envfish_vault as vault;

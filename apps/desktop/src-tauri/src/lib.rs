@@ -65,6 +65,12 @@ pub fn run() {
             commands::list_approvals,
             commands::resolve_approval,
             commands::list_audit,
+            commands::list_credentials,
+            commands::credential_field_specs,
+            commands::create_credential,
+            commands::update_credential_fields,
+            commands::delete_credential,
+            commands::copy_credential_field,
         ])
         .run(tauri::generate_context!())
         .expect("error while running EnvFish");

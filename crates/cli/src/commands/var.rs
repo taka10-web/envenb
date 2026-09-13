@@ -105,7 +105,7 @@ fn read_secret_from_stdin(name: &str) -> anyhow::Result<SecretValue> {
     Ok(SecretValue::new(trimmed))
 }
 
-fn read_line_no_echo() -> anyhow::Result<String> {
+pub(crate) fn read_line_no_echo() -> anyhow::Result<String> {
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
     use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 

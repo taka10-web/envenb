@@ -154,3 +154,35 @@ export const ImportReportSchema = z.object({
   skipped: z.array(z.string()),
 });
 export type ImportReport = z.infer<typeof ImportReportSchema>;
+
+export const CredentialKindSchema = z.enum(["account", "ssh", "database", "file"]);
+export type CredentialKind = z.infer<typeof CredentialKindSchema>;
+export const CREDENTIAL_KINDS: CredentialKind[] = CredentialKindSchema.options;
+
+export const FieldSpecSchema = z.object({
+  name: z.string(),
+  secret: z.boolean(),
+  required: z.boolean(),
+  multiline: z.boolean(),
+});
+export type FieldSpec = z.infer<typeof FieldSpecSchema>;
+
+export const CredentialFieldSchema = z.object({
+  field: z.string(),
+  secret: z.boolean(),
+  value: z.string().nullable(), // always null for secret fields
+  present: z.boolean(),
+});
+
+export const CredentialSchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  environment_id: z.string(),
+  kind: CredentialKindSchema,
+  name: z.string(),
+  note: z.string().nullable(),
+  fields: z.array(CredentialFieldSchema),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Credential = z.infer<typeof CredentialSchema>;

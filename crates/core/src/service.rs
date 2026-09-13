@@ -99,6 +99,10 @@ impl EnvFish {
         &self.pool
     }
 
+    pub(crate) fn vault(&self) -> &Vault {
+        &self.vault
+    }
+
     // ---------- status ----------
 
     pub async fn status(&self) -> Result<StatusReport> {

@@ -46,7 +46,7 @@ describe("I18nProvider", () => {
     await waitFor(() => expect(screen.getByTestId("locale")).toHaveTextContent("ja"));
     expect(screen.getByTestId("plain")).toHaveTextContent("プロジェクト");
     expect(screen.getByTestId("vars")).toHaveTextContent("作成日 2026-01-02");
-    expect(document.documentElement.lang).toBe("ja");
+    await waitFor(() => expect(document.documentElement.lang).toBe("ja"));
   });
 
   it("renders English strings when settings say en", async () => {

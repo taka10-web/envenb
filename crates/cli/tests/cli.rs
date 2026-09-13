@@ -353,3 +353,105 @@ fn mcp_stdio_handshake_and_no_secret_tools() {
     let (ok, out, _) = run(home, &["ai", "clients", "--json"]);
     assert!(ok && out.contains("test-client"));
 }
+
+#[test]
+fn credentials_store_copy_guard_and_run_injection() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+    assert!(run(home, &["project", "add", "my-app"]).0);
+    assert!(run(home, &["env", "development", "--create"]).0);
+
+    let (ok, out, err) = run(
+        home,
+        &[
+            "cred",
+            "add",
+            "qa-admin",
+            "--kind",
+            "account",
+            "--field",
+            "url=https://staging.example.com/login",
+            "--field",
+            "username=qa-user-NEEDLE",
+            "--field",
+            "password=pw-NEEDLE",
+            "--field",
+            "totp_secret=JBSWY3DPEHPK3PXP",
+        ],
+    );
+    assert!(ok, "{err}");
+    assert!(out.contains("Stored credential qa-admin"));
+
+    let key = home.join("id_test");
+    std::fs::write(
+        &key,
+        "-----BEGIN OPENSSH PRIVATE KEY-----\nKEY-NEEDLE\n-----END OPENSSH PRIVATE KEY-----\n",
+    )
+    .unwrap();
+    let (ok, _, err) = run(
+        home,
+        &[
+            "cred",
+            "add",
+            "bastion",
+            "--kind",
+            "ssh",
+            "--field",
+            "host=bastion.example.com",
+            "--field",
+            "user=deploy",
+            "--field",
+            &format!("private_key=@{}", key.display()),
+        ],
+    );
+    assert!(ok, "{err}");
+
+    // Required fields are enforced.
+    let (ok, _, err) = run(
+        home,
+        &[
+            "cred", "add", "broken", "--kind", "database", "--field", "host=db",
+        ],
+    );
+    assert!(!ok && err.contains("require"), "{err}");
+
+    // Listing and JSON never carry secret values.
+    let (ok, out, _) = run(home, &["cred", "list", "--json"]);
+    assert!(ok && out.contains("qa-admin") && out.contains("https://staging.example.com/login"));
+    assert!(!out.contains("NEEDLE"));
+    let (ok, out, _) = run(home, &["cred", "show", "qa-admin"]);
+    assert!(ok && out.contains("••••••••") && !out.contains("NEEDLE"));
+
+    // Copy refuses when stdout is not a TTY (this test harness).
+    let (ok, _, err) = run(home, &["cred", "copy", "qa-admin"]);
+    assert!(!ok && err.contains("interactive terminal"));
+
+    // run --with-credentials injects into the child only.
+    let (ok, out, err) = run(
+        home,
+        &[
+            "run",
+            "--with-credentials",
+            "--",
+            "sh",
+            "-c",
+            "printf '%s|%s' \"$ENVFISH_CRED_QA_ADMIN_USERNAME\" \"$ENVFISH_CRED_BASTION_HOST\"",
+        ],
+    );
+    assert!(ok, "{err}");
+    assert_eq!(out.trim(), "qa-user-NEEDLE|bastion.example.com");
+
+    // Nothing on disk in the data dir holds plaintext (the key file we wrote lives in `home` too, skip it).
+    for entry in std::fs::read_dir(home).unwrap() {
+        let path = entry.unwrap().path();
+        if path.file_name().is_some_and(|n| n == "id_test") {
+            continue;
+        }
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(
+            !bytes.windows(6).any(|w| w == b"NEEDLE"),
+            "plaintext found in {}",
+            path.display()
+        );
+    }
+}

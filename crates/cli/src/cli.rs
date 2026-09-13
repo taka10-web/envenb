@@ -105,6 +105,11 @@ pub enum Command {
         "現在の環境の変数と Secret を注入してコマンドを実行",
     ), trailing_var_arg = true)]
     Run {
+        #[arg(long, help = tr(
+            "Also expose credentials: ENVFISH_CRED_<NAME>_<FIELD> for account/database/ssh fields and ENVFISH_FILE_<NAME> paths for file credentials (0600 temp files, removed on exit)",
+            "資格情報も渡す: account/database/ssh は ENVFISH_CRED_<名前>_<フィールド>、file は ENVFISH_FILE_<名前> にパス (0600 の一時ファイル、終了時に削除)",
+        ))]
+        with_credentials: bool,
         #[arg(value_name = "COMMAND", required = true, num_args = 1.., help = tr(
             "Command and arguments, e.g. `envfish run pnpm dev`",
             "コマンドと引数。例: `envfish run pnpm dev`",
@@ -176,6 +181,24 @@ pub enum Command {
         dir: String,
         #[arg(long, help = tr("Scan every environment of the current project, not just the selected one", "選択中の環境だけでなくプロジェクトの全環境を対象にする"))]
         all_environments: bool,
+    },
+    #[command(about = tr(
+        "Credentials: test accounts, SSH targets, databases, files/certificates",
+        "資格情報: テストアカウント、SSH、データベース、ファイル/証明書",
+    ))]
+    Cred {
+        #[command(subcommand)]
+        command: CredCommand,
+    },
+    #[command(about = tr(
+        "Open an SSH session using a stored ssh credential (key written to a 0600 temp file, removed on exit)",
+        "保存済み ssh 資格情報で SSH 接続 (鍵は 0600 の一時ファイルに展開し、終了時に削除)",
+    ), trailing_var_arg = true)]
+    Ssh {
+        #[arg(value_name = "NAME")]
+        name: String,
+        #[arg(value_name = "ARGS", num_args = 0.., help = tr("Extra arguments passed to ssh", "ssh に渡す追加引数"))]
+        args: Vec<String>,
     },
     #[command(about = tr("Settings shared with the desktop app", "Desktop と共有する設定"))]
     Config {
@@ -387,5 +410,55 @@ pub enum VaultCommand {
     KeyBackend {
         #[arg(value_name = "BACKEND")]
         backend: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum CredCommand {
+    #[command(about = tr("List credentials of the current environment", "現在の環境の資格情報を一覧"))]
+    List,
+    #[command(about = tr(
+        "Add a credential. Secret fields are prompted for (hidden) or read with --field NAME=@file / NAME=-",
+        "資格情報を追加。Secret フィールドは非表示入力、または --field 名=@ファイル / 名=- (stdin) で指定",
+    ))]
+    Add {
+        #[arg(value_name = "NAME")]
+        name: String,
+        #[arg(long, value_name = "KIND", help = tr("account | ssh | database | file", "account | ssh | database | file"))]
+        kind: String,
+        #[arg(long = "field", value_name = "FIELD=VALUE", help = tr(
+            "Field value. VALUE may be @path (file contents) or - (stdin). Repeatable",
+            "フィールド値。VALUE は @パス (ファイル内容) または - (stdin) も可。複数指定可",
+        ))]
+        fields: Vec<String>,
+        #[arg(long, value_name = "TEXT", help = tr("Non-secret memo", "メモ (秘密でないもの)"))]
+        note: Option<String>,
+    },
+    #[command(about = tr("Show a credential (non-secret fields; secret fields as names)", "資格情報を表示 (Secret は名前のみ)"))]
+    Show {
+        #[arg(value_name = "NAME")]
+        name: String,
+    },
+    #[command(about = tr("Set fields on an existing credential", "既存の資格情報のフィールドを設定"))]
+    Set {
+        #[arg(value_name = "NAME")]
+        name: String,
+        #[arg(long = "field", value_name = "FIELD=VALUE", required = true)]
+        fields: Vec<String>,
+    },
+    #[command(about = tr(
+        "Copy one secret field to the clipboard (TTY only, cleared after 30 s). Use --field totp for a one-time code",
+        "Secret フィールドをクリップボードにコピー (TTY のみ、30 秒後に消去)。--field totp でワンタイムコード",
+    ))]
+    Copy {
+        #[arg(value_name = "NAME")]
+        name: String,
+        #[arg(long, value_name = "FIELD", default_value = "password")]
+        field: String,
+    },
+    #[command(about = tr("Remove a credential", "資格情報を削除"))]
+    Remove {
+        #[arg(value_name = "NAME")]
+        name: String,
     },
 }

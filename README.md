@@ -135,6 +135,9 @@ and `state.json` (current project/environment ids for the CLI). Never commit it.
 | `envfish import [.env] [--yes] [--dry-run]` | import a `.env` with PUBLIC/SECRET classification (confirmed per variable on a TTY) |
 | `envfish export-example [.env.example]` | write a `.env.example` (secrets blank) |
 | `envfish connection list \| add <name> --kind k --url u --secret SECRET_NAME [--auth style] [--meta k=v]... \| remove <name>` | external service connections (`generic_http`, `openai`, `supabase`, `cloudflare`, `vercel`, `github`, `aws`); the credential is the *name* of a SECRET |
+| `envfish cred list \| add <name> --kind account\|ssh\|database\|file [--field k=v \| k=@file \| k=-]... \| show \| set \| copy [--field f] \| remove` | structured credentials for humans: test accounts (with TOTP), SSH targets, databases, files/certificates |
+| `envfish ssh <name> [-- args]` | SSH with a stored key (0600 temp file, removed on exit) |
+| `envfish run --with-credentials <cmd>` | also expose credentials as `ENVFISH_CRED_<NAME>_<FIELD>` and file credentials as `ENVFISH_FILE_<NAME>` paths |
 | `envfish scan [dir] [--all-environments]` | report files that contain a stored secret value (value never printed) and `.env` files tracked by git; exit 2 on findings |
 | `envfish agent [--ping]` | run the Local Agent on a Unix socket (`<data dir>/agent.sock`, mode 0600) |
 | `envfish ai clients \| register <name> [--kind k]` | AI clients (also auto-registered by `envfish mcp`) |
@@ -199,6 +202,30 @@ envfish connection add sqs --kind aws --url https://sqs.ap-northeast-1.amazonaws
   --secret AWS_SECRET_ACCESS_KEY --meta region=ap-northeast-1 --meta service=sqs \
   --meta access_key_id_secret=AWS_ACCESS_KEY_ID
 ```
+
+### Credentials (for humans)
+
+Variables cover `NAME=value`. Credentials hold the messier things: a test account
+(URL, username, password, TOTP seed), an SSH target (host, user, private key),
+a database login, or a whole file such as a certificate or kubeconfig. Every
+secret field is sealed per field; usernames count as secret too.
+
+```bash
+envfish cred add qa-admin --kind account --field url=https://staging.example.com/login   # prompts for username/password (hidden)
+envfish cred add bastion  --kind ssh --field host=bastion.example.com --field user=deploy --field private_key=@~/.ssh/id_bastion
+envfish cred add pg-stg   --kind database --field engine=postgres --field host=db.example.com --field database=app
+envfish cred add ca-cert  --kind file --field filename=ca.pem --field content=@./ca.pem
+
+envfish cred copy qa-admin --field password   # clipboard, cleared after 30 s (TTY only)
+envfish cred copy qa-admin --field totp       # current one-time code
+envfish ssh bastion -- uptime
+envfish run --with-credentials -- psql        # ENVFISH_CRED_PG_STG_PASSWORD, ENVFISH_FILE_CA_CERT, ...
+```
+
+The desktop app has the same in its **Credentials** page, with copy buttons
+that call into Rust: the value is placed on the clipboard without ever passing
+through the webview. AI clients only get `list_credentials` (names, kinds and
+non-secret fields such as host or URL).
 
 ## Using EnvFish from Claude Code
 
@@ -297,9 +324,10 @@ agree; strings live in `src/lib/i18n.tsx`.
   `MasterKey` (vault) print `[REDACTED]` under `Debug`, have no `Display`,
   `Serialize`, `Clone` or `PartialEq`, and are zeroized on drop. Reading the
   content requires calling `expose()`, which is easy to grep for in review.
-- **No AI-reachable "get secret".** Decryption is `pub(crate)`; the only two
-  sanctioned consumers are `resolve_process_env` (for `envfish run`, human
-  initiated) and the closure-based `with_secret` used by the Broker. Neither
+- **No AI-reachable "get secret".** Decryption is `pub(crate)`; the sanctioned
+  consumers are `resolve_process_env` (for `envfish run`, human initiated), the
+  closure-based `with_secret` used by the Broker, and `with_credential_field`
+  behind the human-only copy / ssh / run paths. Neither
   the Tauri commands, the MCP tools nor `AgentRequest` can return a value. The
   desktop app cannot reveal a stored secret; a human-only reveal with OS
   authentication is still deliberately absent.
@@ -387,6 +415,7 @@ Broker 経由で許可された操作だけを実行させるための開発者�
 - 設定 (言語 ja / en / system、テーマ light / dark / system) を CLI と Desktop で共有
 - ドット絵の金魚 (赤・錦・黒出目金) を CLI の節目コマンドで表示。非 TTY / CI / `--json` / `--no-animation` では出さず、`NO_COLOR` 対応
 - Connector 追加: Cloudflare / Vercel / GitHub (Bearer)、AWS (SigV4 署名を Broker 内で実施。AWS 公式のテストベクタで検証)
+- Credential (資格情報): テストアカウント (URL・ユーザー名・パスワード・TOTP)、SSH (ホスト・ユーザー・秘密鍵)、データベース、ファイル/証明書をフィールド単位で暗号化保存。`envfish cred copy` / Desktop のコピーボタンでクリップボードへ (30 秒で自動消去、値は画面に出さない)、`envfish ssh`、`envfish run --with-credentials`。AI には `list_credentials` で名前と非秘密フィールドのみ
 - `envfish scan`: 作業ツリー内に Secret の値が漏れていないか、追跡中の `.env` が無いかを検査 (値は表示しない)
 - `envfish agent`: Local Agent を Unix ソケット (0600) で起動
 - GitHub Actions: CI (fmt / clippy / test / typecheck / vitest / build) とタグ時のリリースビルド
