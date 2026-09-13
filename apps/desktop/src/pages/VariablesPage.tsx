@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
-import { ClipboardCopy, FileDown, FolderOpen, Lock, Plus, Trash2, X } from "lucide-react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ClipboardCopy, FileDown, Lock, Plus, Trash2, X } from "lucide-react";
 import { Badge, Button, cn, GoldfishInline, GoldfishLoader, Input, Label } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
-import type { DotenvPreview, ImportReport, Project, VariableKind } from "../lib/types";
+import type { Project, VariableKind } from "../lib/types";
 import { ErrorNote } from "../components/ErrorNote";
-import { Segmented } from "../components/Segmented";
+import { DotenvImport } from "../components/DotenvImport";
 import { useI18n } from "../lib/i18n";
 import { confirmAsync } from "../lib/confirm";
 
@@ -18,6 +18,7 @@ export function VariablesPage({ project }: { project: Project }) {
 
   // Default to the first environment when none is chosen.
   const selected = environmentId ?? envs.data?.[0]?.id;
+  const selectedEnv = envs.data?.find((e) => e.id === selected);
 
   if (envs.isLoading) return <GoldfishLoader label={t("common.loading")} className="py-16" />;
   if (!envs.data?.length) return <p className="py-8 text-sm text-muted-foreground">{t("vars.createEnvFirst")}</p>;
@@ -36,14 +37,15 @@ export function VariablesPage({ project }: { project: Project }) {
           </Button>
         ))}
       </div>
-      {selected && <VariableTable environmentId={selected} />}
+      {selected && <VariableTable key={selected} environmentId={selected} environmentName={selectedEnv?.name ?? ""} />}
     </div>
   );
 }
 
-function VariableTable({ environmentId }: { environmentId: string }) {
+function VariableTable({ environmentId, environmentName }: { environmentId: string; environmentName: string }) {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const vars = useQuery({ queryKey: queryKeys.variables(environmentId), queryFn: () => api.listVariables(environmentId) });
 
   const [name, setName] = useState("");
@@ -67,7 +69,19 @@ function VariableTable({ environmentId }: { environmentId: string }) {
   });
   const remove = useMutation({ mutationFn: (n: string) => api.deleteVariable(environmentId, n), onSuccess: invalidate });
 
-  const [importOpen, setImportOpen] = useState(false);
+  // null = automatic: the import flow is open while the environment is empty
+  // (or when arriving via `?import=1`), and hidden once the user closes it.
+  const [importOpen, setImportOpen] = useState<boolean | null>(searchParams.get("import") === "1" ? true : null);
+  const isEmpty = vars.data?.length === 0;
+  const showImport = importOpen ?? isEmpty;
+  const closeImport = () => {
+    setImportOpen(false);
+    if (searchParams.has("import")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("import");
+      setSearchParams(next, { replace: true });
+    }
+  };
   const [copied, setCopied] = useState<"ok" | "fail" | null>(null);
   useEffect(() => {
     if (!copied) return;
@@ -88,9 +102,16 @@ function VariableTable({ environmentId }: { environmentId: string }) {
 
   return (
     <div>
+      {isEmpty && showImport && <h2 className="mb-3 text-base font-semibold tracking-tight">{t("vars.import.emptyHeading")}</h2>}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Button type="button" variant={importOpen ? "secondary" : "outline"} size="sm" onClick={() => setImportOpen((o) => !o)}>
-          {importOpen ? <X className="h-3.5 w-3.5" /> : <FileDown className="h-3.5 w-3.5" />} {t("vars.import.button")}
+        <Button
+          type="button"
+          variant={showImport ? "secondary" : "outline"}
+          size="sm"
+          className={cn(!showImport && "border-primary text-primary hover:text-primary")}
+          onClick={() => (showImport ? closeImport() : setImportOpen(true))}
+        >
+          {showImport ? <X className="h-3.5 w-3.5" /> : <FileDown className="h-3.5 w-3.5" />} {t("vars.import.button")}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={() => copyExample.mutate()} disabled={copyExample.isPending}>
           {copyExample.isPending ? <GoldfishInline /> : <ClipboardCopy className="h-3.5 w-3.5" />} {t("vars.copyExample")}
@@ -99,13 +120,16 @@ function VariableTable({ environmentId }: { environmentId: string }) {
         {copied === "fail" && <span className="text-xs text-destructive">{t("vars.copyFailed")}</span>}
       </div>
       {copyExample.error && <ErrorNote error={copyExample.error} />}
-      {importOpen && (
-        <DotenvImportPanel
-          environmentId={environmentId}
-          onImported={() => {
-            invalidate();
-          }}
-        />
+      {showImport && (
+        <div className="mb-6">
+          <DotenvImport
+            environmentId={environmentId}
+            environmentName={environmentName}
+            existingNames={vars.data?.map((v) => v.name) ?? []}
+            onImported={invalidate}
+            onClose={closeImport}
+          />
+        </div>
       )}
 
       <form
@@ -205,148 +229,6 @@ function VariableTable({ environmentId }: { environmentId: string }) {
             ))}
           </tbody>
         </table>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// .env import: paste → preview (Rust parses and suggests a kind) → import.
-
-type Row = { name: string; value: string; kind: VariableKind; suggestion: DotenvPreview["entries"][number]["suggestion"]; line: number };
-
-function DotenvImportPanel({ environmentId, onImported }: { environmentId: string; onImported: () => void }) {
-  const { t } = useI18n();
-  const [text, setText] = useState("");
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [invalid, setInvalid] = useState<number[]>([]);
-  const [report, setReport] = useState<ImportReport | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const preview = useMutation({
-    mutationFn: (source: string) => api.previewDotenv(source),
-    onSuccess: (p) => {
-      setReport(null);
-      setInvalid(p.invalid_lines);
-      setRows(
-        p.entries.map((e) => ({
-          name: e.name,
-          value: e.value,
-          // REVIEW is ambiguous; default to the safe side.
-          kind: e.suggestion === "PUBLIC" ? "PUBLIC" : "SECRET",
-          suggestion: e.suggestion,
-          line: e.line,
-        })),
-      );
-    },
-  });
-  const doImport = useMutation({
-    mutationFn: () => api.importVariables(environmentId, (rows ?? []).map(({ name, value, kind }) => ({ name, value, kind }))),
-    onSuccess: (r) => {
-      setReport(r);
-      setRows(null);
-      setText("");
-      setFileName(null);
-      onImported();
-    },
-  });
-
-  const setKindAt = (i: number, kind: VariableKind) => setRows((rs) => rs?.map((r, j) => (j === i ? { ...r, kind } : r)) ?? null);
-
-  // Pure web API: the file never leaves the webview; its text is only pasted into the textarea.
-  const onFileChosen = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const content = await file.text();
-    setText(content);
-    setFileName(file.name);
-    if (content.trim()) preview.mutate(content);
-  };
-
-  return (
-    <div className="mb-6 rounded-lg border bg-card p-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="dotenv-text">{t("vars.import.paste")}</Label>
-        <textarea
-          id="dotenv-text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={6}
-          spellCheck={false}
-          placeholder={"DATABASE_URL=postgres://localhost/app\nOPENAI_API_KEY=sk-..."}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <p className="text-xs text-muted-foreground">{t("vars.import.hint")}</p>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <input ref={fileInput} type="file" accept=".env,.env.*,text/plain" hidden data-testid="dotenv-file" onChange={(e) => void onFileChosen(e)} />
-        <Button type="button" size="sm" variant="outline" onClick={() => fileInput.current?.click()} disabled={preview.isPending}>
-          <FolderOpen className="h-3.5 w-3.5" /> {t("vars.import.chooseFile")}
-        </Button>
-        {fileName && <span className="font-mono text-xs text-muted-foreground">{t("vars.import.fileLoaded", { name: fileName })}</span>}
-        <Button type="button" size="sm" variant="secondary" onClick={() => preview.mutate(text)} disabled={!text.trim() || preview.isPending}>
-          {preview.isPending && <GoldfishInline />} {t("vars.import.preview")}
-        </Button>
-        {rows && rows.length > 0 && (
-          <Button type="button" size="sm" onClick={() => doImport.mutate()} disabled={doImport.isPending}>
-            {doImport.isPending && <GoldfishInline />} {t("vars.import.confirm", { count: rows.length })}
-          </Button>
-        )}
-      </div>
-      {preview.error && <ErrorNote error={preview.error} />}
-      {doImport.error && <ErrorNote error={doImport.error} />}
-
-      {invalid.length > 0 && (
-        <p className="mt-3 text-xs text-destructive">{t("vars.import.invalidLines", { lines: invalid.join(", ") })}</p>
-      )}
-      {rows?.length === 0 && <p className="mt-3 text-sm text-muted-foreground">{t("vars.import.nothing")}</p>}
-
-      {rows && rows.length > 0 && (
-        <table className="mt-4 w-full text-sm">
-          <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr className="border-b">
-              <th className="py-2 pr-4 font-medium">{t("common.name")}</th>
-              <th className="py-2 pr-4 font-medium">{t("common.value")}</th>
-              <th className="py-2 pr-4 font-medium">{t("common.kind")}</th>
-              <th className="py-2 font-medium">{t("vars.import.suggestion")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={`${r.line}-${r.name}`} className="border-b last:border-0">
-                <td className="py-2 pr-4 font-mono">{r.name}</td>
-                <td className="max-w-xs truncate py-2 pr-4 font-mono text-xs text-muted-foreground">{r.kind === "PUBLIC" ? r.value : "••••••••"}</td>
-                <td className="py-2 pr-4">
-                  <Segmented
-                    size="sm"
-                    value={r.kind}
-                    onChange={(k) => setKindAt(i, k)}
-                    options={[
-                      { value: "PUBLIC" as VariableKind, label: "PUBLIC", activeClass: "bg-emerald-600 text-white" },
-                      { value: "SECRET" as VariableKind, label: "SECRET", activeClass: "bg-amber-600 text-white" },
-                    ]}
-                  />
-                </td>
-                <td className="py-2">
-                  {r.suggestion === "REVIEW" ? (
-                    <Badge variant="secret">{t("vars.import.review")}</Badge>
-                  ) : (
-                    <Badge variant={r.suggestion === "SECRET" ? "secret" : "public"}>{r.suggestion}</Badge>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {report && (
-        <p className="mt-3 text-sm">
-          {t("vars.import.report", { publicAdded: report.public_added, secretAdded: report.secret_added, skipped: report.skipped.length })}
-          {report.skipped.length > 0 && <span className="ml-1 font-mono text-xs text-muted-foreground">({report.skipped.join(", ")})</span>}
-        </p>
       )}
     </div>
   );

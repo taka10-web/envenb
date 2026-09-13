@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { FileDown, Plus, Trash2 } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, GoldfishLoader, Input } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
 import type { Project } from "../lib/types";
@@ -84,9 +84,14 @@ export function EnvironmentsPage({ project }: { project: Project }) {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-wrap gap-2">
               <Button asChild variant="secondary" size="sm">
                 <Link to={`/projects/${project.id}/variables/${env.id}`}>{t("envs.open")}</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/projects/${project.id}/variables/${env.id}?import=1`}>
+                  <FileDown className="h-3.5 w-3.5" /> {t("vars.import.button")}
+                </Link>
               </Button>
             </CardContent>
           </Card>
