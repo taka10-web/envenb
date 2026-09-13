@@ -52,10 +52,6 @@ export default function App() {
             <Settings className="h-4 w-4" />
             <span className="flex-1">{t("nav.settings")}</span>
           </NavLink>
-          <div className="px-2 text-xs text-muted-foreground">
-            <p>{t("tagline.1")}</p>
-            <p>{t("tagline.2")}</p>
-          </div>
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto">

@@ -21,8 +21,6 @@ const en = {
   "nav.settings": "Settings",
   "nav.guide": "Guide",
   "projects.emptyGuide": "Read the guide to get started",
-  "tagline.1": "Your AI can use your secrets.",
-  "tagline.2": "Your AI never sees your secrets.",
   "lang.label": "Language",
 
   "common.loading": "Loading…",
@@ -227,8 +225,6 @@ const ja: Record<keyof typeof en, string> = {
   "nav.settings": "設定",
   "nav.guide": "使い方",
   "projects.emptyGuide": "使い方を読む",
-  "tagline.1": "AI は Secret を使える。",
-  "tagline.2": "AI は Secret を見られない。",
   "lang.label": "言語",
 
   "common.loading": "読み込み中…",
