@@ -60,10 +60,14 @@ Enter を押すと提案どおりです。取り込んだファイルは自動�
 ### 4. アプリを起動する
 
 ```bash
-envenb run pnpm dev
+envenb run npm run dev
+envenb run python app.py
+envenb run go run .
+envenb run docker compose up
 ```
 
-値は **子プロセスの環境変数にだけ** 渡ります。`.env.local` はもう不要なので削除できます。
+`run` の後ろには **任意のコマンド** が書けます。特定の言語やパッケージ
+マネージャに依存しません。値は **子プロセスの環境変数にだけ** 渡ります。`.env.local` はもう不要なので削除できます。
 
 ```bash
 envenb import .env.local --delete   # 取り込みと同時に (確認あり)

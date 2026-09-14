@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @source "../../../packages/ui/src";
 
-/* DotGothic16 (SIL OFL 1.1) — bundled pixel font for the retro look. */
+/* DotGothic16 (SIL OFL 1.1) — bundled pixel font, used for the brand mark only. */
 @font-face {
   font-family: "DotGothic16";
   src: url("./assets/fonts/DotGothic16-Regular.ttf") format("truetype");
@@ -67,13 +67,14 @@
 
 @theme inline {
   /* Tight corners, system font for body, pixel font for the h1 and the brand only. */
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-xl: 4px;
-  --radius-2xl: 6px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 14px;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   --font-pixel: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDMincho", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -101,10 +102,16 @@
     @apply bg-background text-foreground antialiased;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   }
-  /* Page titles and the brand carry the pixel look; body text stays crisp. */
-  h1, .font-pixel {
+  /* Only the brand mark carries the pixel face, beside the pixel-art maiko.
+     Headings use a Mincho display face: the 和 register without the retro. */
+  .font-pixel {
     font-family: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     letter-spacing: 0.02em;
+  }
+  h1, h2, h3 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDMincho", serif;
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
   ::selection {
     background: var(--primary);

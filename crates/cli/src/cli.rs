@@ -111,8 +111,8 @@ pub enum Command {
         ))]
         with_credentials: bool,
         #[arg(value_name = "COMMAND", required = true, num_args = 1.., help = tr(
-            "Command and arguments, e.g. `envenb run pnpm dev`",
-            "コマンドと引数。例: `envenb run pnpm dev`",
+            "Any command and its arguments, e.g. `npm run dev`, `python app.py`, `go run .`, `docker compose up`",
+            "任意のコマンドと引数。例: `npm run dev`、`python app.py`、`go run .`、`docker compose up`",
         ))]
         command: Vec<String>,
     },

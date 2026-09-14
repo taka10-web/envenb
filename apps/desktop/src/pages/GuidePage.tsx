@@ -79,7 +79,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
       {
         title: "4. Run your own app with everything injected",
         description: "Decrypted values go into the child process only. Do not start an AI agent this way; give it the broker instead.",
-        steps: [{ title: "Terminal", body: "ENVENB_PROJECT and ENVENB_ENVIRONMENT are set as well.", commands: [{ run: "envenb run pnpm dev", note: "Starts your command with the variables and decrypted secrets in its environment." }] }],
+        steps: [{ title: "Terminal", body: "ENVENB_PROJECT and ENVENB_ENVIRONMENT are set as well.", commands: [{ run: "envenb run npm run dev", note: "Any command works: npm, python, go, docker, a shell script." }, { run: "envenb run python app.py", note: "The command is started with the variables and decrypted secrets in its environment." }] }],
       },
       {
         title: "5. Describe the services an AI may use",
@@ -176,7 +176,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
       {
         title: "4. 自分のアプリに注入して起動する",
         description: "復号した値は子プロセスにだけ渡ります。AI エージェント自体をこの方法で起こさず、AI には次の Broker 経由を使ってください。",
-        steps: [{ title: "ターミナル", body: "ENVENB_PROJECT と ENVENB_ENVIRONMENT も渡されます。", commands: [{ run: "envenb run pnpm dev", note: "変数と復号した Secret を環境変数に入れて、コマンドを起動します。" }] }],
+        steps: [{ title: "ターミナル", body: "ENVENB_PROJECT と ENVENB_ENVIRONMENT も渡されます。", commands: [{ run: "envenb run npm run dev", note: "任意のコマンドが使えます。npm / python / go / docker / シェルスクリプトなど。" }, { run: "envenb run python app.py", note: "変数と復号した Secret を環境変数に入れて、コマンドを起動します。" }] }],
       },
       {
         title: "5. AI に使わせるサービスを定義する",
@@ -284,7 +284,7 @@ export function GuidePage() {
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border font-mono text-xs text-muted-foreground" aria-hidden>
                   {section.number}
                 </span>
-                <h2 className="font-pixel text-base leading-tight">{section.title}</h2>
+                <h2 className="text-base leading-tight">{section.title}</h2>
               </div>
               <p className="mt-2 pl-9 text-sm leading-relaxed text-muted-foreground">{renderBody(section.description)}</p>
 
@@ -314,7 +314,7 @@ export function GuidePage() {
           ))}
 
           <section className="scroll-mt-6">
-            <h2 className="font-pixel text-base leading-tight">{t("ai.legend.title")}</h2>
+            <h2 className="text-base leading-tight">{t("ai.legend.title")}</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("ai.legend.note")}</p>
             <table className="mt-4 text-sm">
               <thead>

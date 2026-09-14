@@ -102,11 +102,13 @@ OPENAI_API_KEY     SECRET  ••••••••
 Imported: PUBLIC 1 / SECRET 1
 Added to .gitignore: .env.local
 
-$ envenb run pnpm dev
+$ envenb run npm run dev
   EnvEnb · my-app / development · 1 public · 1 secrets injected
 ```
 
-Values are injected into the child process only. Nothing is written back to disk.
+`run` takes any command — `npm run dev`, `python app.py`, `go run .`,
+`docker compose up`, a shell script of your own. Values are injected into the
+child process only. Nothing is written back to disk.
 
 ## Using EnvEnb with Claude Code
 

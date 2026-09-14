@@ -44,7 +44,7 @@ export function ProjectDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="font-pixel text-lg leading-none">{project.name}</h1>
+        <h1 className="text-lg leading-none">{project.name}</h1>
         <span className="truncate font-mono text-xs text-muted-foreground">{project.local_path ?? t("projects.noPath")}</span>
       </div>
       {remove.error && <ErrorNote error={remove.error} />}
