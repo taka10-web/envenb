@@ -479,3 +479,59 @@ mod remove_tests {
         assert_eq!(dotenv_files_in(dir.path()), Vec::<std::path::PathBuf>::new());
     }
 }
+
+#[cfg(test)]
+mod worktree_tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(dir: &std::path::Path, args: &[&str]) -> bool {
+        Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    /// A linked worktree has no `.git` directory of its own — only a `.git`
+    /// *file* pointing into the main repository. `git_root` must still report
+    /// the worktree's own root, so `.gitignore` is written next to the files
+    /// the user is actually working on rather than in the main checkout.
+    #[test]
+    fn a_linked_worktree_resolves_to_its_own_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let main = tmp.path().join("main");
+        std::fs::create_dir_all(&main).unwrap();
+
+        if !git(&main, &["init", "-q", "."]) {
+            return; // no usable git in this environment
+        }
+        git(&main, &["config", "user.email", "test@example.com"]);
+        git(&main, &["config", "user.name", "test"]);
+        std::fs::write(main.join("README"), b"x").unwrap();
+        git(&main, &["add", "-A"]);
+        if !git(&main, &["commit", "-qm", "init"]) {
+            return;
+        }
+
+        let wt = tmp.path().join("wt");
+        if !git(&main, &["worktree", "add", "-q", wt.to_str().unwrap(), "-b", "feature"]) {
+            return;
+        }
+        // A linked worktree carries a .git file, not a directory.
+        assert!(wt.join(".git").is_file(), "expected a linked worktree");
+
+        let got = git_root(&wt).expect("worktree should resolve to a git root");
+        assert_eq!(
+            got.canonicalize().unwrap(),
+            wt.canonicalize().unwrap(),
+            "git_root must return the worktree's own root, not the main checkout"
+        );
+
+        // And .gitignore must land inside the worktree.
+        ensure_gitignored(&got, &[".env.local"]).unwrap();
+        assert!(wt.join(".gitignore").is_file());
+        assert!(!main.join(".gitignore").exists());
+    }
+}
