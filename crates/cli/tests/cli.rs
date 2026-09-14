@@ -507,11 +507,20 @@ fn clean_deletes_only_fully_stored_dotenv_files() {
     std::fs::write(repo.join(".env"), "APP_URL=http://x\nTOKEN=t\n").unwrap();
     std::fs::write(repo.join(".env.staging"), "ONLY_HERE=1\n").unwrap();
     std::fs::write(repo.join(".env.example"), "APP_URL=\n").unwrap();
-    assert!(run(home, &["project", "add", "my-app", "--path", repo.to_str().unwrap()]).0);
+    assert!(
+        run(
+            home,
+            &["project", "add", "my-app", "--path", repo.to_str().unwrap()]
+        )
+        .0
+    );
     assert!(run(home, &["env", "development", "--create"]).0);
 
     // Import .env with --delete but without --yes: non-interactive → file kept.
-    let (ok, out, err) = run(home, &["import", repo.join(".env").to_str().unwrap(), "--yes", "--delete"]);
+    let (ok, out, err) = run(
+        home,
+        &["import", repo.join(".env").to_str().unwrap(), "--yes", "--delete"],
+    );
     assert!(ok, "{err}");
     assert!(out.contains("Deleted"), "{out}");
     assert!(!repo.join(".env").exists());
