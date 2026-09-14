@@ -253,7 +253,7 @@ describe("CredentialsPage", () => {
     renderPage({ projects: [] });
 
     await screen.findByText("Create a project to get started.");
-    expect(screen.getByRole("link", { name: "Create project" })).toHaveAttribute("href", "/projects");
+    expect(screen.getByRole("link", { name: "Create project" })).toHaveAttribute("href", "/projects?new=1");
     expect(screen.queryByRole("button", { name: "Add credential" })).not.toBeInTheDocument();
     expect(mocks.listCredentials).not.toHaveBeenCalled();
   });

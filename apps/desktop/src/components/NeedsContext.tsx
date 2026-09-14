@@ -10,7 +10,7 @@ export function NeedsProject() {
   return (
     <EmptyState text={t("guide.needProject")}>
       <Button asChild size="sm">
-        <Link to="/projects">{t("projects.create")}</Link>
+        <Link to="/projects?new=1">{t("projects.create")}</Link>
       </Button>
     </EmptyState>
   );

@@ -1,4 +1,5 @@
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { cn, Goldfish } from "@envfish/ui";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
@@ -42,15 +43,33 @@ function ContextSwitcher() {
   const { projects, environments, projectId, environmentId, setProject, setEnvironment } = useAppContext();
   return (
     <div className="flex flex-col gap-1.5 px-3 pb-3">
-      <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t("common.project")}</label>
-      <select aria-label={t("common.project")} className={switcherClass} value={projectId ?? ""} onChange={(e) => setProject(e.target.value)} disabled={projects.length === 0}>
-        {projects.length === 0 && <option value="">{t("context.noProject")}</option>}
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center justify-between">
+        <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t("common.project")}</label>
+        <Link
+          to="/projects?new=1"
+          aria-label={t("projects.create")}
+          title={t("projects.create")}
+          className="flex h-5 w-5 items-center justify-center rounded border border-border text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Plus className="h-3 w-3" />
+        </Link>
+      </div>
+      {projects.length === 0 ? (
+        <Link
+          to="/projects?new=1"
+          className="flex h-8 items-center justify-center gap-1 rounded-md border border-dashed border-border text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Plus className="h-3 w-3" /> {t("projects.create")}
+        </Link>
+      ) : (
+        <select aria-label={t("common.project")} className={switcherClass} value={projectId ?? ""} onChange={(e) => setProject(e.target.value)}>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
       <label className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t("common.environment")}</label>
       <select
         aria-label={t("common.environment")}

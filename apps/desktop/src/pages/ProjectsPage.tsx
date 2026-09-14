@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Settings2 } from "lucide-react";
 import { Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
@@ -15,6 +15,8 @@ export function ProjectsPage() {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const wantsNew = searchParams.get("new") === "1";
   const { setProject } = useAppContext();
   const projects = useQuery({ queryKey: queryKeys.projects, queryFn: api.listProjects });
   const status = useQuery({ queryKey: queryKeys.status, queryFn: api.status });
@@ -45,17 +47,30 @@ export function ProjectsPage() {
       <PageHeader title={t("projects.title")} />
 
       <form
-        className="mb-4 flex items-center gap-2"
+        className="mb-6 rounded-lg border border-border bg-card p-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (name.trim()) create.mutate();
         }}
       >
-        <Input aria-label={t("common.name")} placeholder="my-app" value={name} onChange={(e) => setName(e.target.value)} className="h-8 w-56" />
+        <div className="mb-3">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t("projects.newTitle")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("projects.newHint")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+        <Input
+          aria-label={t("common.name")}
+          placeholder="my-app"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-8 w-56"
+          autoFocus={wantsNew}
+        />
         <Input aria-label={t("projects.localPath")} placeholder="/Users/you/works/my-app" value={path} onChange={(e) => setPath(e.target.value)} className="h-8 flex-1 font-mono text-xs" />
         <Button type="submit" size="sm" disabled={!name.trim() || create.isPending}>
-          {create.isPending ? <GoldfishInline /> : <Plus className="h-3.5 w-3.5" />} {t("common.add")}
+          {create.isPending ? <GoldfishInline /> : <Plus className="h-3.5 w-3.5" />} {t("projects.create")}
         </Button>
+        </div>
       </form>
       {create.error && <ErrorNote error={create.error} />}
       {projects.error && <ErrorNote error={projects.error} />}
