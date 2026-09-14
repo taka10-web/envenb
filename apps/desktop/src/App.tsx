@@ -1,8 +1,8 @@
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
-import { Activity, BookOpen, Bot, Folder, KeyRound, Plug, Settings } from "lucide-react";
 import { cn, Goldfish } from "@envfish/ui";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
+import { VariablesPage } from "./pages/VariablesPage";
 import { ConnectionsPage } from "./pages/ConnectionsPage";
 import { CredentialsPage } from "./pages/CredentialsPage";
 import { AiAccessPage } from "./pages/AiAccessPage";
@@ -10,64 +10,97 @@ import { ActivityPage } from "./pages/ActivityPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { GuidePage } from "./pages/GuidePage";
 import { useI18n, type MessageKey } from "./lib/i18n";
+import { useAppContext } from "./lib/context";
 
-const NAV: { to: string; label: MessageKey; icon: typeof Folder }[] = [
-  { to: "/projects", label: "nav.projects", icon: Folder },
-  { to: "/connections", label: "nav.connections", icon: Plug },
-  { to: "/credentials", label: "nav.credentials", icon: KeyRound },
-  { to: "/ai-access", label: "nav.aiAccess", icon: Bot },
-  { to: "/activity", label: "nav.activity", icon: Activity },
+// Daily-use pages first; project administration and settings after.
+const NAV: { to: string; label: MessageKey }[] = [
+  { to: "/variables", label: "nav.variables" },
+  { to: "/credentials", label: "nav.credentials" },
+  { to: "/connections", label: "nav.connections" },
+  { to: "/ai-access", label: "nav.aiAccess" },
+  { to: "/activity", label: "nav.activity" },
+  { to: "/projects", label: "nav.projects" },
+  { to: "/settings", label: "nav.settings" },
+  { to: "/guide", label: "nav.guide" },
 ];
 
-function navClass({ isActive }: { isActive: boolean }) {
+function tabClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
-    isActive
-      ? "border-border bg-accent text-accent-foreground font-medium shadow-[2px_2px_0_0_var(--color-border)]"
-      : "border-transparent text-muted-foreground hover:bg-accent/60",
+    "-mb-px flex h-9 items-center border-b-2 px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    isActive ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+  );
+}
+
+const switcherClass =
+  "h-7 max-w-[180px] truncate rounded-md border border-transparent bg-transparent pl-2 pr-6 font-mono text-xs text-foreground hover:border-border hover:bg-accent/60 focus-visible:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60";
+
+/** Project / environment switcher in the top bar. */
+function ContextSwitcher() {
+  const { t } = useI18n();
+  const { projects, environments, projectId, environmentId, setProject, setEnvironment } = useAppContext();
+  return (
+    <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+      <select aria-label={t("common.project")} className={switcherClass} value={projectId ?? ""} onChange={(e) => setProject(e.target.value)} disabled={projects.length === 0}>
+        {projects.length === 0 && <option value="">{t("context.noProject")}</option>}
+        {projects.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden>/</span>
+      <select
+        aria-label={t("common.environment")}
+        className={switcherClass}
+        value={environmentId ?? ""}
+        onChange={(e) => setEnvironment(e.target.value)}
+        disabled={environments.length === 0}
+      >
+        {environments.length === 0 && <option value="">{t("context.noEnvironment")}</option>}
+        {environments.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
 export default function App() {
   const { t } = useI18n();
   return (
-    <div className="flex h-screen">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-4">
+    <div className="flex h-screen flex-col">
+      <header className="flex h-12 shrink-0 items-center gap-6 border-b border-border px-4">
+        <NavLink to="/variables" className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Goldfish variant="red" size={2} />
-          <span className="font-pixel text-base tracking-wide">EnvFish</span>
-        </div>
-        <nav className="flex flex-col gap-1 px-2">
-          {NAV.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={navClass}>
-              <Icon className="h-4 w-4" />
-              <span className="flex-1">{t(label)}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="mt-auto flex flex-col gap-3 px-2 pb-4">
-          <NavLink to="/guide" className={navClass}>
-            <BookOpen className="h-4 w-4" />
-            <span className="flex-1">{t("nav.guide")}</span>
+          <span className="font-pixel text-base leading-none">EnvFish</span>
+        </NavLink>
+        <ContextSwitcher />
+      </header>
+      <nav className="flex h-9 shrink-0 items-stretch border-b border-border px-4" aria-label="Pages">
+        {NAV.map(({ to, label }) => (
+          <NavLink key={to} to={to} className={tabClass}>
+            {t(label)}
           </NavLink>
-          <NavLink to="/settings" className={navClass}>
-            <Settings className="h-4 w-4" />
-            <span className="flex-1">{t("nav.settings")}</span>
-          </NavLink>
-        </div>
-      </aside>
+        ))}
+      </nav>
       <main className="flex-1 overflow-y-auto">
-        <Routes>
-          <Route path="/" element={<Navigate to="/projects" replace />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:projectId/*" element={<ProjectDetailPage />} />
-          <Route path="/connections" element={<ConnectionsPage />} />
-          <Route path="/credentials" element={<CredentialsPage />} />
-          <Route path="/ai-access" element={<AiAccessPage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route path="/activity" element={<ActivityPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
+        <div className="mx-auto max-w-[1040px] px-6 py-6">
+          <Routes>
+            <Route path="/" element={<Navigate to="/variables" replace />} />
+            <Route path="/variables" element={<VariablesPage />} />
+            <Route path="/credentials" element={<CredentialsPage />} />
+            <Route path="/connections" element={<ConnectionsPage />} />
+            <Route path="/ai-access" element={<AiAccessPage />} />
+            <Route path="/activity" element={<ActivityPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/guide" element={<GuidePage />} />
+            <Route path="*" element={<Navigate to="/variables" replace />} />
+          </Routes>
+        </div>
       </main>
     </div>
   );

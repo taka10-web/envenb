@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   getSettings: vi.fn(),
   setLanguage: vi.fn(),
   setTheme: vi.fn(),
+  listProjects: vi.fn(),
   listEnvironments: vi.fn(),
   listVariables: vi.fn(),
   previewDotenv: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("../lib/api", () => ({
   queryKeys: {
     status: ["status"] as const,
     settings: ["settings"] as const,
+    projects: ["projects"] as const,
     environments: (projectId: string) => ["environments", projectId] as const,
     variables: (environmentId: string) => ["variables", environmentId] as const,
   },
@@ -38,14 +40,16 @@ vi.mock("../lib/api", () => ({
 
 import { I18nProvider } from "../lib/i18n";
 import { ThemeProvider } from "../lib/theme";
+import { AppContextProvider } from "../lib/context";
 import { VariablesPage } from "./VariablesPage";
 
 const SOURCE = "APP_URL=https://example.com\nAPI_TOKEN=tok_123";
 
-function renderPage({ variables = [], route = "/projects/proj-1/variables" }: { variables?: Variable[]; route?: string } = {}) {
+function renderPage({ variables = [], route = "/variables" }: { variables?: Variable[]; route?: string } = {}) {
   mocks.getSettings.mockResolvedValue(settings);
   mocks.setLanguage.mockResolvedValue(settings);
   mocks.setTheme.mockResolvedValue(settings);
+  mocks.listProjects.mockResolvedValue([project]);
   mocks.listEnvironments.mockResolvedValue([env]);
   mocks.listVariables.mockResolvedValue(variables);
   mocks.previewDotenv.mockResolvedValue(previewResult);
@@ -55,9 +59,11 @@ function renderPage({ variables = [], route = "/projects/proj-1/variables" }: { 
     <QueryClientProvider client={qc}>
       <ThemeProvider>
         <I18nProvider>
-          <MemoryRouter initialEntries={[route]}>
-            <VariablesPage project={project} />
-          </MemoryRouter>
+          <AppContextProvider>
+            <MemoryRouter initialEntries={[route]}>
+              <VariablesPage />
+            </MemoryRouter>
+          </AppContextProvider>
         </I18nProvider>
       </ThemeProvider>
     </QueryClientProvider>,
@@ -137,7 +143,7 @@ describe("VariablesPage .env import", () => {
 
   it("opens the flow from ?import=1 and shows the filename after a chosen file", async () => {
     const user = userEvent.setup();
-    renderPage({ variables: [existingVar], route: "/projects/proj-1/variables/env-1?import=1" });
+    renderPage({ variables: [existingVar], route: "/variables?import=1" });
 
     const zone = await screen.findByTestId("dotenv-dropzone");
     const file = new File([SOURCE], ".env.local", { type: "text/plain" });

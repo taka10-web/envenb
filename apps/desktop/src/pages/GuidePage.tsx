@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Goldfish } from "@envfish/ui";
+import { Button } from "@envfish/ui";
 import { PageHeader } from "../components/PageHeader";
+import { SectionLabel } from "../components/SectionLabel";
 import { useI18n } from "../lib/i18n";
 
 // Long-form guide text lives here per locale rather than in the flat i18n
@@ -10,16 +11,15 @@ import { useI18n } from "../lib/i18n";
 type Step = { title: string; body: string; commands?: string[] };
 type Section = { title: string; description: string; steps: Step[] };
 
-const GUIDE: Record<"en" | "ja", { title: string; description: string; sections: Section[]; defaults: string[][] }> = {
+const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults: string[][] }> = {
   en: {
     title: "How to use EnvFish",
-    description: "From registering a project to letting Claude Code call your services without ever seeing a key.",
     sections: [
       {
         title: "1. Register a project and its environments",
         description: "One project per client or product. Environments hold different values for development, staging and production.",
         steps: [
-          { title: "In this app", body: "Projects → Add project, then open it and add environments (quick add: development / staging / production)." },
+          { title: "In this app", body: "Projects → add a project, then open its settings (gear icon) and add environments (quick add: development / staging / production). The top bar switches between projects and environments." },
           {
             title: "From the terminal",
             body: "The CLI reads and writes the same data directory, so whatever you add here shows up there and vice versa.",
@@ -31,7 +31,7 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "2. Store variables and secrets",
         description: "PUBLIC values are plain configuration an AI may see. SECRET values are encrypted before they reach SQLite and are never shown again.",
         steps: [
-          { title: "In this app", body: "Open a project → Variables. Choose PUBLIC or SECRET per entry, or paste a whole .env with “Import .env” and confirm the suggested classification." },
+          { title: "In this app", body: "Variables → type into the first row and choose PUBLIC or SECRET, or paste a whole .env with “Import .env” and confirm the suggested classification." },
           {
             title: "From the terminal",
             body: "Secrets are read from stdin so they never end up in shell history or `ps`.",
@@ -48,7 +48,7 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "4. Describe the services an AI may use",
         description: "A connection is a base URL plus the name of the SECRET that authenticates it. The value stays in the vault.",
         steps: [
-          { title: "In this app", body: "Connections → pick the environment, kind (generic_http / openai / supabase), name, URL and the credential from the list of SECRET names." },
+          { title: "In this app", body: "Connections → Add connection: kind (generic_http / openai / supabase / …), name, URL and the credential from the list of SECRET names in the current environment." },
           { title: "From the terminal", body: "", commands: ["envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", "envfish connection add openai --kind openai --secret OPENAI_API_KEY"] },
         ],
       },
@@ -77,7 +77,7 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "8. Credentials for humans",
         description: "Test accounts, SSH targets, database logins and certificates are structured secrets for you, not for the AI. Each copy button hands the value from Rust straight to the clipboard and clears it after 30 seconds.",
         steps: [
-          { title: "In this app", body: "Credentials → pick the environment, choose a kind (account / ssh / database / file) and fill in the fields. Secret fields are never shown again; use Copy, or Copy code for the current TOTP." },
+          { title: "In this app", body: "Credentials → Add credential: choose a kind (account / ssh / database / file) and fill in the fields. Secret fields are never shown again; use Copy, or Copy code for the current TOTP." },
           {
             title: "From the terminal",
             body: "The same records are available to the CLI, including SSH and wrapped commands that receive the credential as environment variables.",
@@ -95,13 +95,12 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
   },
   ja: {
     title: "EnvFish の使い方",
-    description: "案件の登録から、Claude Code に鍵を見せずにサービスを呼ばせるまでの流れです。",
     sections: [
       {
         title: "1. 案件と環境を登録する",
         description: "案件・プロダクトごとに 1 つのプロジェクト。環境ごとに development / staging / production の値を分けて持ちます。",
         steps: [
-          { title: "このアプリで", body: "「プロジェクト」→ プロジェクトを追加 → 開いて環境を追加 (development / staging / production はクイック追加)。" },
+          { title: "このアプリで", body: "「プロジェクト」→ プロジェクトを追加 → 歯車アイコンから設定を開いて環境を追加します (development / staging / production はクイック追加)。プロジェクトと環境の切り替えは上部バーで行います。" },
           {
             title: "ターミナルで",
             body: "CLI とこのアプリは同じデータを読み書きするため、どちらで登録しても双方に反映されます。",
@@ -113,7 +112,7 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "2. 変数と Secret を登録する",
         description: "PUBLIC は AI に見えてよい設定値。SECRET は SQLite に届く前に暗号化され、以後は表示されません。",
         steps: [
-          { title: "このアプリで", body: "プロジェクト → 「変数」タブ。1 件ずつ PUBLIC / SECRET を選ぶか、「.env を取り込む」に貼り付けて分類の提案を確認します。" },
+          { title: "このアプリで", body: "「変数」→ 先頭行に入力して PUBLIC / SECRET を選ぶか、「.env を取り込む」に貼り付けて分類の提案を確認します。" },
           {
             title: "ターミナルで",
             body: "Secret は stdin から読み取るため、シェル履歴や ps に残りません。",
@@ -130,7 +129,7 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "4. AI に使わせるサービスを定義する",
         description: "接続 = ベース URL + 認証に使う SECRET の「名前」。値は Vault から出ません。",
         steps: [
-          { title: "このアプリで", body: "「接続」→ 環境・種別 (generic_http / openai / supabase)・名前・URL を入力し、認証情報は SECRET 名の一覧から選びます。" },
+          { title: "このアプリで", body: "「接続」→ 接続を追加: 種別 (generic_http / openai / supabase など)・名前・URL を入力し、認証情報は現在の環境の SECRET 名の一覧から選びます。" },
           { title: "ターミナルで", body: "", commands: ["envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", "envfish connection add openai --kind openai --secret OPENAI_API_KEY"] },
         ],
       },
@@ -159,7 +158,7 @@ const GUIDE: Record<"en" | "ja", { title: string; description: string; sections:
         title: "8. 人が使う資格情報",
         description: "テストアカウント・SSH 接続先・DB ログイン・証明書は、AI ではなく人が使う構造化された Secret です。コピーボタンは Rust からクリップボードへ直接値を渡し、30 秒後に自動で消去します。",
         steps: [
-          { title: "このアプリで", body: "「資格情報」→ 環境を選び、種別 (account / ssh / database / file) を選んで項目を入力します。Secret 項目は以後表示されません。必要なときは「コピー」、TOTP は「コードをコピー」を使います。" },
+          { title: "このアプリで", body: "「資格情報」→ 資格情報を追加: 種別 (account / ssh / database / file) を選んで項目を入力します。Secret 項目は以後表示されません。必要なときは「コピー」、TOTP は「コードをコピー」を使います。" },
           {
             title: "ターミナルで",
             body: "同じレコードを CLI からも使えます。SSH 接続や、資格情報を環境変数として受け取るコマンドの起動にも対応しています。",
@@ -189,9 +188,9 @@ function CommandLine({ command, copiedLabel }: { command: string; copiedLabel: s
     }
   };
   return (
-    <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5">
+    <div className="group flex h-8 items-center gap-2 rounded-md border border-border/60 bg-muted/40 pl-3 pr-1">
       <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs">{command}</code>
-      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copy} aria-label={copied ? copiedLabel : "copy"}>
+      <Button type="button" variant="ghost" size="icon-sm" className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100" onClick={copy} aria-label={copied ? copiedLabel : "copy"}>
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
     </div>
@@ -202,63 +201,54 @@ export function GuidePage() {
   const { locale, t } = useI18n();
   const guide = GUIDE[locale];
   return (
-    <div className="p-8">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader title={guide.title} description={guide.description} />
-        <div className="flex gap-2 pt-1">
-          <Goldfish variant="red" size={3} />
-          <Goldfish variant="nishiki" size={3} />
-          <Goldfish variant="demekin" size={3} />
-        </div>
-      </div>
+    <div className="max-w-3xl">
+      <PageHeader title={guide.title} />
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-10">
         {guide.sections.map((section) => (
-          <Card key={section.title}>
-            <CardHeader>
-              <CardTitle>{section.title}</CardTitle>
-              <CardDescription>{section.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
+          <section key={section.title}>
+            <SectionLabel>{section.title}</SectionLabel>
+            <p className="mb-3 text-sm">{section.description}</p>
+            <div className="flex flex-col divide-y divide-border/60">
               {section.steps.map((step) => (
-                <div key={step.title} className="flex flex-col gap-2">
-                  <p className="text-sm">
-                    <span className="font-medium">{step.title}</span>
-                    {step.body && <span className="text-muted-foreground"> — {step.body}</span>}
-                  </p>
-                  {step.commands?.map((c) => <CommandLine key={c} command={c} copiedLabel={t("vars.copied")} />)}
+                <div key={step.title} className="grid gap-2 py-3 sm:grid-cols-[140px_1fr]">
+                  <span className="font-mono text-xs text-muted-foreground">{step.title}</span>
+                  <div className="flex flex-col gap-2">
+                    {step.body && <p className="text-sm">{step.body}</p>}
+                    {step.commands?.map((c) => <CommandLine key={c} command={c} copiedLabel={t("vars.copied")} />)}
+                  </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         ))}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("ai.legend.title")}</CardTitle>
-            <CardDescription>{t("ai.legend.note")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  {guide.defaults[0].map((h) => (
-                    <th key={h} className="py-1 pr-6 font-medium">{h}</th>
+        <section>
+          <SectionLabel>{t("ai.legend.title")}</SectionLabel>
+          <p className="mb-3 text-sm">{t("ai.legend.note")}</p>
+          <table className="text-sm">
+            <thead>
+              <tr>
+                {guide.defaults[0].map((h) => (
+                  <th key={h} className="h-8 border-b border-border/60 pr-6 text-left font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {guide.defaults.slice(1).map((row) => (
+                <tr key={row[0]} className="h-9 border-b border-border/60 last:border-0">
+                  {row.map((cell, i) => (
+                    <td key={i} className={i === 0 ? "pr-6" : "pr-6 font-mono text-xs"}>
+                      {cell}
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {guide.defaults.slice(1).map((row) => (
-                  <tr key={row[0]} className="border-t">
-                    {row.map((cell, i) => (
-                      <td key={i} className={i === 0 ? "py-1.5 pr-6" : "py-1.5 pr-6 font-mono text-xs"}>{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+              ))}
+            </tbody>
+          </table>
+        </section>
       </div>
     </div>
   );

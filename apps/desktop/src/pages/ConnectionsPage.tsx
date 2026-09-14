@@ -1,18 +1,23 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { ArrowRight, KeyRound, Plus, Trash2 } from "lucide-react";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, GoldfishInline, GoldfishLoader, Input, Label } from "@envfish/ui";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { KeyRound, Plus, Trash2 } from "lucide-react";
+import { Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
-import { CONNECTION_KINDS, type Connection, type ConnectionKind, type Environment, type Project } from "../lib/types";
+import { CONNECTION_KINDS, type Connection, type ConnectionKind } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
 import { ErrorNote } from "../components/ErrorNote";
 import { EmptyState } from "../components/EmptyState";
+import { Field } from "../components/Field";
+import { KindDot, type KindTone } from "../components/KindDot";
+import { WithEnvironment } from "../components/NeedsContext";
+import { SectionLabel } from "../components/SectionLabel";
 import { Select } from "../components/Select";
+import { Sheet } from "../components/Sheet";
+import { RowActions, Table, Td, Th, Tr } from "../components/Table";
 import { useI18n, type MessageKey } from "../lib/i18n";
+import { useAppContext } from "../lib/context";
 import { confirmAsync } from "../lib/confirm";
 
-const KINDS = CONNECTION_KINDS;
 const KIND_LABEL_KEY: Record<ConnectionKind, MessageKey> = {
   generic_http: "connections.kind.generic_http",
   openai: "connections.kind.openai",
@@ -21,6 +26,15 @@ const KIND_LABEL_KEY: Record<ConnectionKind, MessageKey> = {
   vercel: "connections.kind.vercel",
   github: "connections.kind.github",
   aws: "connections.kind.aws",
+};
+const KIND_TONE: Record<ConnectionKind, KindTone> = {
+  generic_http: "slate",
+  openai: "emerald",
+  supabase: "teal",
+  cloudflare: "orange",
+  vercel: "violet",
+  github: "sky",
+  aws: "amber",
 };
 /** Shown as the placeholder; kinds with a well-known API host may leave the URL blank. */
 const DEFAULT_BASE_URL: Record<ConnectionKind, string> = {
@@ -64,123 +78,114 @@ function awsScope(c: Connection): string | null {
   return region || service ? `${region ?? "?"}/${service ?? "?"}` : null;
 }
 
-export function ConnectionsPage({ project }: { project?: Project }) {
-  return project ? <ProjectConnections project={project} /> : <AllConnections />;
-}
-
-// ---------------------------------------------------------------------------
-// Global route: every project, its connections, and a link to the project tab.
-
-function AllConnections() {
+export function ConnectionsPage() {
   const { t } = useI18n();
-  const projects = useQuery({ queryKey: queryKeys.projects, queryFn: api.listProjects });
-  const perProject = useQueries({
-    queries: (projects.data ?? []).map((p) => ({
-      queryKey: queryKeys.connections(p.id),
-      queryFn: () => api.listConnections(p.id),
-    })),
-  });
-  const loading = projects.isLoading || perProject.some((q) => q.isLoading);
-  const total = perProject.reduce((n, q) => n + (q.data?.length ?? 0), 0);
-
+  const { isLoading, projectId, environmentId } = useAppContext();
+  const ready = !isLoading && !!projectId && !!environmentId;
   return (
-    <div className="p-8">
-      <PageHeader title={t("connections.title")} description={t("connections.description")} />
-      {projects.error && <ErrorNote error={projects.error} />}
-      {perProject.map((q, i) => q.error && <ErrorNote key={projects.data?.[i]?.id ?? i} error={q.error} />)}
-      {loading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
-
-      {!loading && projects.data?.length === 0 && (
-        <EmptyState text={t("connections.noProjects")}>
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/projects">{t("nav.projects")}</Link>
-          </Button>
-        </EmptyState>
-      )}
-      {!loading && projects.data && projects.data.length > 0 && total === 0 && <EmptyState text={t("connections.emptyAll")} />}
-
-      <div className="grid gap-4">
-        {projects.data?.map((p, i) => {
-          const conns = perProject[i]?.data ?? [];
-          if (conns.length === 0) return null;
-          return (
-            <Card key={p.id}>
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle>{p.name}</CardTitle>
-                <Button asChild variant="ghost" size="sm">
-                  <Link to={`/projects/${p.id}/connections`}>
-                    {t("connections.manage")} <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <ConnectionTable connections={conns} />
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+    <div>
+      {!ready && <PageHeader title={t("connections.title")} context />}
+      <WithEnvironment>{({ projectId, environmentId }) => <EnvironmentConnections key={environmentId} projectId={projectId} environmentId={environmentId} />}</WithEnvironment>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Project tab: connections per environment + "Add connection" form.
-
-function ProjectConnections({ project }: { project: Project }) {
+function EnvironmentConnections({ projectId, environmentId }: { projectId: string; environmentId: string }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const envs = useQuery({ queryKey: queryKeys.environments(project.id), queryFn: () => api.listEnvironments(project.id) });
-  const conns = useQuery({ queryKey: queryKeys.connections(project.id), queryFn: () => api.listConnections(project.id) });
+  const conns = useQuery({ queryKey: queryKeys.connections(projectId), queryFn: () => api.listConnections(projectId) });
+  const [open, setOpen] = useState(false);
 
   const remove = useMutation({
     mutationFn: (id: string) => api.deleteConnection(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.connections(project.id) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.connections(projectId) }),
   });
 
-  if (envs.isLoading || conns.isLoading) return <GoldfishLoader label={t("common.loading")} className="py-16" />;
-  if (!envs.data?.length) return <p className="py-8 text-sm text-muted-foreground">{t("vars.createEnvFirst")}</p>;
+  const list = conns.data?.filter((c) => c.environment_id === environmentId) ?? [];
+  const byKind = CONNECTION_KINDS.map((k) => [k, list.filter((c) => c.kind === k)] as const).filter(([, cs]) => cs.length > 0);
+
+  const addButton = (
+    <Button size="sm" onClick={() => setOpen(true)}>
+      <Plus className="h-3.5 w-3.5" /> {t("connections.add")}
+    </Button>
+  );
 
   return (
     <div>
-      <AddConnectionForm project={project} environments={envs.data} />
-      {envs.error && <ErrorNote error={envs.error} />}
+      <PageHeader title={t("connections.title")} context actions={addButton} />
       {conns.error && <ErrorNote error={conns.error} />}
       {remove.error && <ErrorNote error={remove.error} />}
+      {conns.isLoading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
+      {conns.data && list.length === 0 && <EmptyState text={t("connections.empty")}>{addButton}</EmptyState>}
 
-      {conns.data?.length === 0 && <EmptyState text={t("connections.empty")} />}
-
-      <div className="grid gap-4">
-        {envs.data.map((env) => {
-          const list = conns.data?.filter((c) => c.environment_id === env.id) ?? [];
-          if (list.length === 0) return null;
-          return (
-            <Card key={env.id}>
-              <CardHeader>
-                <CardTitle className="text-sm">{env.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ConnectionTable
-                  connections={list}
-                  onDelete={(c) => {
-                    void confirmAsync(t("connections.confirmDelete", { name: c.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
- if (ok) remove.mutate(c.id);
- });
-                  }}
-                />
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="flex flex-col gap-6">
+        {byKind.map(([kind, cs]) => (
+          <section key={kind}>
+            <SectionLabel>
+              <KindDot tone={KIND_TONE[kind]} label={t(KIND_LABEL_KEY[kind])} className="uppercase" />
+            </SectionLabel>
+            <Table>
+              <thead className="sr-only">
+                <tr>
+                  <Th>{t("common.name")}</Th>
+                  <Th>{t("connections.baseUrl")}</Th>
+                  <Th>{t("connections.credential")}</Th>
+                  <Th>{t("connections.authStyle")}</Th>
+                  <Th />
+                </tr>
+              </thead>
+              <tbody>
+                {cs.map((c) => (
+                  <Tr key={c.id}>
+                    <Td className="w-[22%] font-medium">{c.name}</Td>
+                    <Td className="max-w-0 truncate font-mono text-xs text-muted-foreground" title={c.base_url}>
+                      {c.base_url}
+                      {awsScope(c) && <span className="ml-2 text-foreground/70">{awsScope(c)}</span>}
+                    </Td>
+                    <Td className="w-[22%] whitespace-nowrap font-mono text-xs">
+                      {c.auth_secret ? (
+                        <span className="inline-flex items-center gap-1">
+                          <KeyRound className="h-3 w-3 text-muted-foreground" /> {c.auth_secret}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </Td>
+                    <Td className="w-28 font-mono text-[11px] text-muted-foreground">{c.auth_style}</Td>
+                    <Td className="w-10">
+                      <RowActions>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t("envs.deleteAria", { name: c.name })}
+                          onClick={() => {
+                            void confirmAsync(t("connections.confirmDelete", { name: c.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
+                              if (ok) remove.mutate(c.id);
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </section>
+        ))}
       </div>
+
+      <Sheet open={open} title={t("connections.add")} onClose={() => setOpen(false)}>
+        <AddConnectionForm projectId={projectId} environmentId={environmentId} onDone={() => setOpen(false)} />
+      </Sheet>
     </div>
   );
 }
 
-function AddConnectionForm({ project, environments }: { project: Project; environments: Environment[] }) {
+function AddConnectionForm({ projectId, environmentId, onDone }: { projectId: string; environmentId: string; onDone: () => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [environmentId, setEnvironmentId] = useState(environments[0]?.id ?? "");
   const [kind, setKind] = useState<ConnectionKind>("generic_http");
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -191,16 +196,7 @@ function AddConnectionForm({ project, environments }: { project: Project; enviro
   const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
   const isAws = kind === "aws";
 
-  // Keep the environment selection valid if the list changes underneath us.
-  useEffect(() => {
-    if (!environments.some((e) => e.id === environmentId)) setEnvironmentId(environments[0]?.id ?? "");
-  }, [environments, environmentId]);
-
-  const vars = useQuery({
-    queryKey: queryKeys.variables(environmentId),
-    queryFn: () => api.listVariables(environmentId),
-    enabled: !!environmentId,
-  });
+  const vars = useQuery({ queryKey: queryKeys.variables(environmentId), queryFn: () => api.listVariables(environmentId) });
   const secrets = vars.data?.filter((v) => v.kind === "SECRET") ?? [];
 
   const create = useMutation({
@@ -212,173 +208,89 @@ function AddConnectionForm({ project, environments }: { project: Project; enviro
         base_url: baseUrl.trim() || null,
         auth_secret: authSecret || null,
         auth_style: authStyle.trim() || null,
-        metadata: isAws
-          ? { region: awsRegion.trim(), service: awsService.trim(), access_key_id_secret: awsAccessKeyId }
-          : null,
+        metadata: isAws ? { region: awsRegion.trim(), service: awsService.trim(), access_key_id_secret: awsAccessKeyId } : null,
       }),
     onSuccess: () => {
-      setName("");
-      setBaseUrl("");
-      setAuthSecret("");
-      setAuthStyle("");
-      setAwsRegion("");
-      setAwsService("");
-      setAwsAccessKeyId("");
-      void qc.invalidateQueries({ queryKey: queryKeys.connections(project.id) });
+      void qc.invalidateQueries({ queryKey: queryKeys.connections(projectId) });
+      onDone();
     },
   });
 
   const baseUrlRequired = !BASE_URL_OPTIONAL[kind];
   const awsComplete = !isAws || (!!awsRegion.trim() && !!awsService.trim() && !!awsAccessKeyId && !!authSecret);
-  const canSubmit = !!environmentId && !!name.trim() && (!baseUrlRequired || !!baseUrl.trim()) && awsComplete && !create.isPending;
+  const canSubmit = !!name.trim() && (!baseUrlRequired || !!baseUrl.trim()) && awsComplete && !create.isPending;
 
-  return (
+  const secretOptions = (
     <>
-      <form
-        className="mb-6 flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) create.mutate();
-        }}
-      >
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-env">{t("common.environment")}</Label>
-          <Select id="conn-env" value={environmentId} onChange={(e) => setEnvironmentId(e.target.value)} className="w-44">
-            {environments.map((env) => (
-              <option key={env.id} value={env.id}>
-                {env.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-kind">{t("common.kind")}</Label>
-          <Select id="conn-kind" value={kind} onChange={(e) => setKind(e.target.value as ConnectionKind)} className="w-40">
-            {KINDS.map((k) => (
-              <option key={k} value={k}>
-                {t(KIND_LABEL_KEY[k])}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-name">{t("common.name")}</Label>
-          <Input id="conn-name" placeholder={kind === "generic_http" ? "backend-api" : kind} value={name} onChange={(e) => setName(e.target.value)} className="w-44" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-url">
-            {t("connections.baseUrl")}
-            {!baseUrlRequired && <span className="ml-1 font-normal text-muted-foreground">({t("connections.optional")})</span>}
-          </Label>
-          <Input id="conn-url" placeholder={DEFAULT_BASE_URL[kind]} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="w-72 font-mono" />
-        </div>
-        {isAws && (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="conn-aws-region">{t("connections.aws.region")}</Label>
-              <Input id="conn-aws-region" placeholder="ap-northeast-1" value={awsRegion} onChange={(e) => setAwsRegion(e.target.value)} className="w-40 font-mono" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="conn-aws-service">{t("connections.aws.service")}</Label>
-              <Input id="conn-aws-service" placeholder="sqs" value={awsService} onChange={(e) => setAwsService(e.target.value)} className="w-32 font-mono" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="conn-aws-access-key">{t("connections.aws.accessKeyId")}</Label>
-              <Select
-                id="conn-aws-access-key"
-                value={awsAccessKeyId}
-                onChange={(e) => setAwsAccessKeyId(e.target.value)}
-                className="w-52 font-mono"
-                disabled={vars.isLoading}
-              >
-                <option value="">{t("connections.noCredential")}</option>
-                {secrets.map((v) => (
-                  <option key={v.id} value={v.name}>
-                    {v.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-secret">{isAws ? t("connections.aws.secretAccessKey") : t("connections.credential")}</Label>
-          <Select id="conn-secret" value={authSecret} onChange={(e) => setAuthSecret(e.target.value)} className="w-52 font-mono" disabled={vars.isLoading}>
-            <option value="">{t("connections.noCredential")}</option>
-            {secrets.map((v) => (
-              <option key={v.id} value={v.name}>
-                {v.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="conn-auth">
-            {t("connections.authStyle")} <span className="ml-1 font-normal text-muted-foreground">({t("connections.authStyleAuto", { style: DEFAULT_AUTH_STYLE[kind] })})</span>
-          </Label>
-          <Input id="conn-auth" placeholder="bearer | header:X-Api-Key | query:key | none" value={authStyle} onChange={(e) => setAuthStyle(e.target.value)} className="w-72 font-mono" />
-        </div>
-        <Button type="submit" disabled={!canSubmit}>
-          {create.isPending ? <GoldfishInline /> : <Plus className="h-4 w-4" />} {t("connections.add")}
-        </Button>
-        <p className="basis-full text-xs text-muted-foreground">
-          <KeyRound className="mr-1 inline h-3 w-3" />
-          {secrets.length === 0 && vars.data ? t("connections.noSecretsHint") : t("connections.credentialHint")}
-        </p>
-      </form>
-      {create.error && <ErrorNote error={create.error} />}
-      {vars.error && <ErrorNote error={vars.error} />}
+      <option value="">{t("connections.noCredential")}</option>
+      {secrets.map((v) => (
+        <option key={v.id} value={v.name}>
+          {v.name}
+        </option>
+      ))}
     </>
   );
-}
 
-// ---------------------------------------------------------------------------
-
-function ConnectionTable({ connections, onDelete }: { connections: Connection[]; onDelete?: (c: Connection) => void }) {
-  const { t } = useI18n();
   return (
-    <table className="w-full text-sm">
-      <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-        <tr className="border-b">
-          <th className="py-2 pr-4 font-medium">{t("common.kind")}</th>
-          <th className="py-2 pr-4 font-medium">{t("common.name")}</th>
-          <th className="py-2 pr-4 font-medium">{t("connections.baseUrl")}</th>
-          <th className="py-2 pr-4 font-medium">{t("connections.credential")}</th>
-          <th className="py-2 pr-4 font-medium">{t("connections.authStyle")}</th>
-          {onDelete && <th className="py-2 font-medium" />}
-        </tr>
-      </thead>
-      <tbody>
-        {connections.map((c) => (
-          <tr key={c.id} className="border-b last:border-0">
-            <td className="py-2 pr-4">
-              <Badge variant="secondary">{t(KIND_LABEL_KEY[c.kind])}</Badge>
-            </td>
-            <td className="py-2 pr-4 font-medium">{c.name}</td>
-            <td className="py-2 pr-4 font-mono text-xs text-muted-foreground">
-              {c.base_url}
-              {awsScope(c) && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[11px] text-foreground/80">{awsScope(c)}</span>}
-            </td>
-            <td className="py-2 pr-4 font-mono text-xs">
-              {c.auth_secret ? (
-                <span className="inline-flex items-center gap-1">
-                  <KeyRound className="h-3 w-3 text-muted-foreground" /> {c.auth_secret}
-                </span>
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              )}
-            </td>
-            <td className="py-2 pr-4 font-mono text-xs text-muted-foreground">{c.auth_style}</td>
-            {onDelete && (
-              <td className="py-2 text-right">
-                <Button variant="ghost" size="icon" aria-label={t("envs.deleteAria", { name: c.name })} onClick={() => onDelete(c)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </td>
-            )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit) create.mutate();
+      }}
+    >
+      <Field label={t("common.kind")} htmlFor="conn-kind">
+        <Select id="conn-kind" value={kind} onChange={(e) => setKind(e.target.value as ConnectionKind)}>
+          {CONNECTION_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {t(KIND_LABEL_KEY[k])}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label={t("common.name")} htmlFor="conn-name">
+        <Input id="conn-name" placeholder={kind === "generic_http" ? "backend-api" : kind} value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Field label={t("connections.baseUrl")} hint={baseUrlRequired ? undefined : t("connections.optional")} htmlFor="conn-url">
+        <Input id="conn-url" placeholder={DEFAULT_BASE_URL[kind]} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="font-mono" />
+      </Field>
+      {isAws && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("connections.aws.region")} htmlFor="conn-aws-region">
+              <Input id="conn-aws-region" placeholder="ap-northeast-1" value={awsRegion} onChange={(e) => setAwsRegion(e.target.value)} className="font-mono" />
+            </Field>
+            <Field label={t("connections.aws.service")} htmlFor="conn-aws-service">
+              <Input id="conn-aws-service" placeholder="sqs" value={awsService} onChange={(e) => setAwsService(e.target.value)} className="font-mono" />
+            </Field>
+          </div>
+          <Field label={t("connections.aws.accessKeyId")} htmlFor="conn-aws-access-key">
+            <Select id="conn-aws-access-key" value={awsAccessKeyId} onChange={(e) => setAwsAccessKeyId(e.target.value)} className="font-mono" disabled={vars.isLoading}>
+              {secretOptions}
+            </Select>
+          </Field>
+        </>
+      )}
+      <Field label={isAws ? t("connections.aws.secretAccessKey") : t("connections.credential")} htmlFor="conn-secret">
+        <Select id="conn-secret" value={authSecret} onChange={(e) => setAuthSecret(e.target.value)} className="font-mono" disabled={vars.isLoading}>
+          {secretOptions}
+        </Select>
+      </Field>
+      <Field label={t("connections.authStyle")} hint={t("connections.authStyleAuto", { style: DEFAULT_AUTH_STYLE[kind] })} htmlFor="conn-auth">
+        <Input id="conn-auth" placeholder="bearer | header:X-Api-Key | query:key | none" value={authStyle} onChange={(e) => setAuthStyle(e.target.value)} className="font-mono" />
+      </Field>
+
+      <p className="flex items-start gap-1.5 font-mono text-[11px] text-muted-foreground">
+        <KeyRound className="mt-0.5 h-3 w-3 shrink-0" />
+        {secrets.length === 0 && vars.data ? t("connections.noSecretsHint") : t("connections.credentialHint")}
+      </p>
+      {create.error && <ErrorNote error={create.error} />}
+      {vars.error && <ErrorNote error={vars.error} />}
+      <div className="flex justify-end">
+        <Button type="submit" disabled={!canSubmit}>
+          {create.isPending ? <GoldfishInline /> : <Plus className="h-4 w-4" />} {t("common.save")}
+        </Button>
+      </div>
+    </form>
   );
 }

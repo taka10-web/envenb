@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Copy, FolderOpen, KeyRound, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, GoldfishInline, GoldfishLoader, Input, Label } from "@envfish/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Copy, FolderOpen, KeyRound, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
 import { api, queryKeys } from "../lib/api";
-import { CREDENTIAL_KINDS, type Credential, type CredentialKind, type Environment, type FieldSpec, type Project } from "../lib/types";
+import { CREDENTIAL_KINDS, type Credential, type CredentialKind, type FieldSpec } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
 import { ErrorNote } from "../components/ErrorNote";
 import { EmptyState } from "../components/EmptyState";
+import { Field } from "../components/Field";
+import { KindDot, type KindTone } from "../components/KindDot";
+import { WithEnvironment } from "../components/NeedsContext";
+import { SectionLabel } from "../components/SectionLabel";
 import { Select } from "../components/Select";
+import { Sheet } from "../components/Sheet";
+import { ListRow, RowActions } from "../components/Table";
 import { useI18n, type MessageKey } from "../lib/i18n";
+import { useAppContext } from "../lib/context";
 import { confirmAsync } from "../lib/confirm";
 
 const KIND_LABEL_KEY: Record<CredentialKind, MessageKey> = {
@@ -18,6 +24,7 @@ const KIND_LABEL_KEY: Record<CredentialKind, MessageKey> = {
   database: "creds.kind.database",
   file: "creds.kind.file",
 };
+const KIND_TONE: Record<CredentialKind, KindTone> = { account: "sky", ssh: "violet", database: "amber", file: "slate" };
 
 // Field names come from the Rust specs; label them when we know them and fall
 // back to the raw name so an unknown field is still usable.
@@ -72,170 +79,116 @@ function summary(c: Credential): string[] {
   return parts;
 }
 
-export function CredentialsPage({ project }: { project?: Project }) {
-  return project ? <ProjectCredentials project={project} /> : <AllCredentials />;
-}
-
-// ---------------------------------------------------------------------------
-// Global route: every project, its credentials, and a link to the project tab.
-
-function AllCredentials() {
+export function CredentialsPage() {
   const { t } = useI18n();
-  const projects = useQuery({ queryKey: queryKeys.projects, queryFn: api.listProjects });
-  const perProject = useQueries({
-    queries: (projects.data ?? []).map((p) => ({
-      queryKey: queryKeys.credentials(p.id),
-      queryFn: () => api.listCredentials(p.id),
-    })),
-  });
-  const loading = projects.isLoading || perProject.some((q) => q.isLoading);
-  const total = perProject.reduce((n, q) => n + (q.data?.length ?? 0), 0);
-
-  return (
-    <div className="p-8">
-      <PageHeader title={t("creds.title")} description={t("creds.description")} />
-      {projects.error && <ErrorNote error={projects.error} />}
-      {perProject.map((q, i) => q.error && <ErrorNote key={projects.data?.[i]?.id ?? i} error={q.error} />)}
-      {loading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
-
-      {!loading && projects.data?.length === 0 && (
-        <EmptyState text={t("creds.noProjects")}>
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/projects">{t("nav.projects")}</Link>
-          </Button>
-        </EmptyState>
-      )}
-      {!loading && projects.data && projects.data.length > 0 && total === 0 && <EmptyState text={t("creds.emptyAll")} />}
-
-      <div className="grid gap-4">
-        {projects.data?.map((p, i) => {
-          const list = perProject[i]?.data ?? [];
-          if (list.length === 0) return null;
-          return (
-            <Card key={p.id}>
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle>{p.name}</CardTitle>
-                <Button asChild variant="ghost" size="sm">
-                  <Link to={`/projects/${p.id}/credentials`}>
-                    {t("creds.manage")} <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <ul className="flex flex-col divide-y text-sm">
-                  {list.map((c) => (
-                    <li key={c.id} className="flex flex-wrap items-center gap-2 py-2">
-                      <Badge variant="secondary">{t(KIND_LABEL_KEY[c.kind])}</Badge>
-                      <span className="font-medium">{c.name}</span>
-                      <span className="font-mono text-xs text-muted-foreground">{summary(c).join(" · ")}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Project tab: environment pills → credentials grouped by kind + add/update form.
-
-function ProjectCredentials({ project }: { project: Project }) {
-  const { t } = useI18n();
-  const { environmentId } = useParams();
-  const navigate = useNavigate();
-  const envs = useQuery({ queryKey: queryKeys.environments(project.id), queryFn: () => api.listEnvironments(project.id) });
-  const selected = environmentId ?? envs.data?.[0]?.id;
-
-  if (envs.isLoading) return <GoldfishLoader label={t("common.loading")} className="py-16" />;
-  if (envs.error) return <ErrorNote error={envs.error} />;
-  if (!envs.data?.length) return <p className="py-8 text-sm text-muted-foreground">{t("vars.createEnvFirst")}</p>;
-  const env = envs.data.find((e) => e.id === selected) ?? envs.data[0];
-
+  const { isLoading, projectId, environmentId } = useAppContext();
+  const ready = !isLoading && !!projectId && !!environmentId;
   return (
     <div>
-      <div className="mb-5 flex flex-wrap gap-1">
-        {envs.data.map((e) => (
-          <Button key={e.id} size="sm" variant={e.id === env.id ? "default" : "outline"} onClick={() => navigate(`/projects/${project.id}/credentials/${e.id}`)}>
-            {e.name}
-          </Button>
-        ))}
-      </div>
-      <EnvironmentCredentials key={env.id} project={project} environment={env} />
+      {/* Once the context is usable the inner view owns the header (it hosts the Add button). */}
+      {!ready && <PageHeader title={t("creds.title")} context />}
+      <WithEnvironment>{({ projectId, environmentId }) => <EnvironmentCredentials key={environmentId} projectId={projectId} environmentId={environmentId} />}</WithEnvironment>
     </div>
   );
 }
 
-function EnvironmentCredentials({ project, environment }: { project: Project; environment: Environment }) {
+type SheetState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; credential: Credential };
+
+function EnvironmentCredentials({ projectId, environmentId }: { projectId: string; environmentId: string }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const specs = useFieldSpecs();
-  const creds = useQuery({ queryKey: queryKeys.credentials(project.id), queryFn: () => api.listCredentials(project.id) });
-  const [editing, setEditing] = useState<Credential | null>(null);
+  const creds = useQuery({ queryKey: queryKeys.credentials(projectId), queryFn: () => api.listCredentials(projectId) });
+  const [sheet, setSheet] = useState<SheetState>({ mode: "closed" });
+  const close = () => setSheet({ mode: "closed" });
 
-  const invalidate = () => void qc.invalidateQueries({ queryKey: queryKeys.credentials(project.id) });
+  const invalidate = () => void qc.invalidateQueries({ queryKey: queryKeys.credentials(projectId) });
   const remove = useMutation({
     mutationFn: (id: string) => api.deleteCredential(id),
     onSuccess: (_data, id) => {
-      setEditing((e) => (e && e.id === id ? null : e));
+      setSheet((s) => (s.mode === "edit" && s.credential.id === id ? { mode: "closed" } : s));
       invalidate();
     },
   });
 
-  if (specs.isLoading || creds.isLoading) return <GoldfishLoader label={t("common.loading")} className="py-16" />;
-
-  const list = creds.data?.filter((c) => c.environment_id === environment.id) ?? [];
+  const list = creds.data?.filter((c) => c.environment_id === environmentId) ?? [];
   const byKind = CREDENTIAL_KINDS.map((k) => [k, list.filter((c) => c.kind === k)] as const).filter(([, cs]) => cs.length > 0);
+  const loading = specs.isLoading || creds.isLoading;
 
   return (
     <div>
+      <PageHeader
+        title={t("creds.title")}
+        context
+        actions={
+          <Button size="sm" onClick={() => setSheet({ mode: "new" })} disabled={!specs.data}>
+            <Plus className="h-3.5 w-3.5" /> {t("creds.add")}
+          </Button>
+        }
+      />
       {specs.error && <ErrorNote error={specs.error} />}
-      {specs.data &&
-        (editing ? (
-          <CredentialForm
-            key={editing.id}
-            specs={specs.data}
-            editing={editing}
-            onDone={() => {
-              setEditing(null);
-              invalidate();
-            }}
-            onCancel={() => setEditing(null)}
-          />
-        ) : (
-          <CredentialForm key="new" specs={specs.data} environmentId={environment.id} onDone={invalidate} />
-        ))}
       {creds.error && <ErrorNote error={creds.error} />}
       {remove.error && <ErrorNote error={remove.error} />}
+      {loading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
 
-      {list.length === 0 && <EmptyState text={t("creds.empty")} />}
+      {!loading && list.length === 0 && (
+        <EmptyState text={t("creds.empty")}>
+          <Button size="sm" onClick={() => setSheet({ mode: "new" })} disabled={!specs.data}>
+            <Plus className="h-3.5 w-3.5" /> {t("creds.add")}
+          </Button>
+        </EmptyState>
+      )}
 
-      <div className="grid gap-4">
+      <div className="flex flex-col gap-6">
         {byKind.map(([kind, cs]) => (
-          <Card key={kind}>
-            <CardHeader>
-              <CardTitle className="text-sm">{t(KIND_LABEL_KEY[kind])}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col divide-y">
+          <section key={kind}>
+            <SectionLabel>
+              <KindDot tone={KIND_TONE[kind]} label={t(KIND_LABEL_KEY[kind])} className="uppercase" />
+            </SectionLabel>
+            <div className="-mx-2">
               {cs.map((c) => (
                 <CredentialRow
                   key={c.id}
                   credential={c}
-                  onEdit={() => setEditing(c)}
+                  onEdit={() => setSheet({ mode: "edit", credential: c })}
                   onDelete={() => {
                     void confirmAsync(t("creds.confirmDelete", { name: c.name }), { confirm: t("common.delete"), cancel: t("common.cancel") }).then((ok) => {
- if (ok) remove.mutate(c.id);
- });
+                      if (ok) remove.mutate(c.id);
+                    });
                   }}
                 />
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         ))}
       </div>
+
+      {specs.data && (
+        <Sheet open={sheet.mode !== "closed"} title={sheet.mode === "edit" ? t("creds.editing", { name: sheet.credential.name }) : t("creds.add")} onClose={close}>
+          {sheet.mode === "edit" && (
+            <CredentialForm
+              key={sheet.credential.id}
+              specs={specs.data}
+              editing={sheet.credential}
+              onDone={() => {
+                close();
+                invalidate();
+              }}
+            />
+          )}
+          {sheet.mode === "new" && (
+            <CredentialForm
+              key="new"
+              specs={specs.data}
+              environmentId={environmentId}
+              onDone={() => {
+                close();
+                invalidate();
+              }}
+            />
+          )}
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -254,32 +207,31 @@ function CredentialRow({ credential: c, onEdit, onDelete }: { credential: Creden
   const parts = summary(c);
 
   return (
-    <div className="flex flex-wrap items-start gap-x-4 gap-y-2 py-3">
+    <ListRow className="py-1.5">
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{t(KIND_LABEL_KEY[c.kind])}</Badge>
-          <span className="font-medium">{c.name}</span>
-          {parts.length > 0 && <span className="font-mono text-xs text-muted-foreground">{parts.join(" · ")}</span>}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <span className="text-sm font-medium">{c.name}</span>
+          {parts.length > 0 && <span className="truncate font-mono text-xs text-muted-foreground">{parts.join(" · ")}</span>}
+          {c.note && <span className="truncate text-xs text-muted-foreground">{c.note}</span>}
         </div>
-        {c.note && <p className="mt-1 text-xs text-muted-foreground">{c.note}</p>}
-        {(secretFields.length > 0 || hasTotp) && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {secretFields.map((f) => (
-              <CopyButton key={f.field} credentialId={c.id} field={f.field} label={fieldLabel(t, f.field)} ariaLabel={t("creds.copyAria", { field: fieldLabel(t, f.field), name: c.name })} />
-            ))}
-            {hasTotp && <CopyButton credentialId={c.id} field="totp" label={t("creds.copyCode")} ariaLabel={t("creds.copyCodeAria", { name: c.name })} code />}
-          </div>
-        )}
       </div>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" aria-label={t("creds.updateAria", { name: c.name })} onClick={onEdit}>
-          <Pencil className="h-3.5 w-3.5" /> {t("creds.update")}
+      {(secretFields.length > 0 || hasTotp) && (
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {secretFields.map((f) => (
+            <CopyButton key={f.field} credentialId={c.id} field={f.field} label={fieldLabel(t, f.field)} ariaLabel={t("creds.copyAria", { field: fieldLabel(t, f.field), name: c.name })} />
+          ))}
+          {hasTotp && <CopyButton credentialId={c.id} field="totp" label={t("creds.copyCode")} ariaLabel={t("creds.copyCodeAria", { name: c.name })} code />}
+        </div>
+      )}
+      <RowActions>
+        <Button variant="ghost" size="icon-sm" aria-label={t("creds.updateAria", { name: c.name })} onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label={t("envs.deleteAria", { name: c.name })} onClick={onDelete}>
-          <Trash2 className="h-4 w-4" />
+        <Button variant="ghost" size="icon-sm" aria-label={t("envs.deleteAria", { name: c.name })} onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
-      </div>
-    </div>
+      </RowActions>
+    </ListRow>
   );
 }
 
@@ -298,15 +250,9 @@ function CopyButton({ credentialId, field, label, ariaLabel, code = false }: { c
   });
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1 text-xs">
-      {!code && (
-        <>
-          <span className="text-muted-foreground">{label}</span>
-          <span className="font-mono text-muted-foreground">{MASK}</span>
-        </>
-      )}
-      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" aria-label={ariaLabel} onClick={() => copy.mutate()} disabled={copy.isPending}>
-        {copy.isPending ? <GoldfishInline /> : <Copy className="h-3 w-3" />} {code ? label : t("creds.copy")}
+    <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+      <Button type="button" variant="outline" size="sm" className="h-6 gap-1 px-1.5 font-mono text-[11px]" aria-label={ariaLabel} onClick={() => copy.mutate()} disabled={copy.isPending}>
+        {copy.isPending ? <GoldfishInline size={1} /> : <Copy className="h-3 w-3" />} {code ? label : `${label} ${MASK}`}
       </Button>
       {ttl !== null && <span className="text-muted-foreground">{t("creds.copied", { seconds: ttl })}</span>}
       {copy.error && <span className="text-destructive">{copy.error instanceof Error ? copy.error.message : t("common.unexpectedError")}</span>}
@@ -318,10 +264,10 @@ function CopyButton({ credentialId, field, label, ariaLabel, code = false }: { c
 // Add / update form, rendered from the FieldSpecs of the chosen kind.
 
 type FormProps =
-  | { specs: SpecMap; environmentId: string; editing?: undefined; onDone: () => void; onCancel?: undefined }
-  | { specs: SpecMap; environmentId?: undefined; editing: Credential; onDone: () => void; onCancel: () => void };
+  | { specs: SpecMap; environmentId: string; editing?: undefined; onDone: () => void }
+  | { specs: SpecMap; environmentId?: undefined; editing: Credential; onDone: () => void };
 
-function CredentialForm({ specs, environmentId, editing, onDone, onCancel }: FormProps) {
+function CredentialForm({ specs, environmentId, editing, onDone }: FormProps) {
   const { t } = useI18n();
   const [kind, setKind] = useState<CredentialKind>(editing?.kind ?? "account");
   const [name, setName] = useState(editing?.name ?? "");
@@ -341,7 +287,9 @@ function CredentialForm({ specs, environmentId, editing, onDone, onCancel }: For
     mutationFn: () => {
       if (editing) {
         // Only what the user filled in travels; an empty secret keeps the stored value.
-        const changed = fields.filter((f) => (values[f.name] ?? "") !== "" && (f.secret || values[f.name] !== (fieldValue(editing, f.name) ?? ""))).map((f) => ({ field: f.name, value: values[f.name] }));
+        const changed = fields
+          .filter((f) => (values[f.name] ?? "") !== "" && (f.secret || values[f.name] !== (fieldValue(editing, f.name) ?? "")))
+          .map((f) => ({ field: f.name, value: values[f.name] }));
         return api.updateCredentialFields(editing.id, changed, note.trim() || null);
       }
       return api.createCredential({
@@ -364,61 +312,43 @@ function CredentialForm({ specs, environmentId, editing, onDone, onCancel }: For
   const canSubmit = (editing ? true : !!environmentId && !!name.trim()) && requiredFilled && !save.isPending;
 
   return (
-    <>
-      <form
-        className="mb-6 flex flex-col gap-3 rounded-lg border bg-card p-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) save.mutate();
-        }}
-      >
-        {editing && (
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">{t("creds.editing", { name: editing.name })}</p>
-            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-              <X className="h-3.5 w-3.5" /> {t("creds.cancel")}
-            </Button>
-          </div>
-        )}
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cred-name">{t("common.name")}</Label>
-            <Input id="cred-name" placeholder="my-account" value={name} onChange={(e) => setName(e.target.value)} className="w-44" disabled={!!editing} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cred-kind">{t("common.kind")}</Label>
-            <Select id="cred-kind" value={kind} onChange={(e) => changeKind(e.target.value as CredentialKind)} className="w-40" disabled={!!editing}>
-              {CREDENTIAL_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {t(KIND_LABEL_KEY[k])}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cred-note">
-              {t("creds.note")} <span className="ml-1 font-normal text-muted-foreground">({t("creds.optional")})</span>
-            </Label>
-            <Input id="cred-note" value={note} onChange={(e) => setNote(e.target.value)} className="w-72" />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
-          {fields.map((spec) => (
-            <FieldInput key={`${kind}-${spec.name}`} spec={spec} value={values[spec.name] ?? ""} onChange={(v) => setValues((vs) => ({ ...vs, [spec.name]: v }))} editing={!!editing} />
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit) save.mutate();
+      }}
+    >
+      <Field label={t("common.name")} htmlFor="cred-name">
+        <Input id="cred-name" placeholder="my-account" value={name} onChange={(e) => setName(e.target.value)} disabled={!!editing} />
+      </Field>
+      <Field label={t("common.kind")} htmlFor="cred-kind">
+        <Select id="cred-kind" value={kind} onChange={(e) => changeKind(e.target.value as CredentialKind)} disabled={!!editing}>
+          {CREDENTIAL_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {t(KIND_LABEL_KEY[k])}
+            </option>
           ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={!canSubmit}>
-            {save.isPending ? <GoldfishInline /> : editing ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editing ? t("creds.update") : t("creds.add")}
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            <Lock className="mr-1 inline h-3 w-3" />
-            {editing ? t("creds.editHint") : t("creds.secretHint")}
-          </p>
-        </div>
-      </form>
+        </Select>
+      </Field>
+      {fields.map((spec) => (
+        <FieldInput key={`${kind}-${spec.name}`} spec={spec} value={values[spec.name] ?? ""} onChange={(v) => setValues((vs) => ({ ...vs, [spec.name]: v }))} editing={!!editing} />
+      ))}
+      <Field label={t("creds.note")} hint={t("creds.optional")} htmlFor="cred-note">
+        <Input id="cred-note" value={note} onChange={(e) => setNote(e.target.value)} />
+      </Field>
+
+      <p className="flex items-start gap-1.5 font-mono text-[11px] text-muted-foreground">
+        <Lock className="mt-0.5 h-3 w-3 shrink-0" />
+        {editing ? t("creds.editHint") : t("creds.secretHint")}
+      </p>
       {save.error && <ErrorNote error={save.error} />}
-    </>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={!canSubmit}>
+          {save.isPending ? <GoldfishInline /> : editing ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editing ? t("creds.update") : t("common.save")}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -438,17 +368,16 @@ function FieldInput({ spec, value, onChange, editing }: { spec: FieldSpec; value
   };
 
   const label = (
-    <Label htmlFor={id}>
+    <>
       {fieldLabel(t, spec.name)}
       {spec.required && !editing && <span className="ml-0.5 text-destructive" title={t("creds.required")}>*</span>}
       {spec.secret && <KeyRound className="ml-1 inline h-3 w-3 text-muted-foreground" aria-hidden />}
-    </Label>
+    </>
   );
 
   if (spec.multiline) {
     return (
-      <div className="flex basis-full flex-col gap-1.5">
-        {label}
+      <Field label={label} htmlFor={id}>
         <textarea
           id={id}
           value={value}
@@ -457,7 +386,7 @@ function FieldInput({ spec, value, onChange, editing }: { spec: FieldSpec; value
           spellCheck={false}
           autoComplete="off"
           placeholder={spec.secret && editing ? MASK : undefined}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           style={spec.secret ? SECRET_TEXTAREA_STYLE : undefined}
         />
         <div className="flex items-center gap-2">
@@ -467,13 +396,12 @@ function FieldInput({ spec, value, onChange, editing }: { spec: FieldSpec; value
           </Button>
           {fileName && <span className="font-mono text-xs text-muted-foreground">{t("creds.fileLoaded", { name: fileName })}</span>}
         </div>
-      </div>
+      </Field>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {label}
+    <Field label={label} htmlFor={id}>
       <Input
         id={id}
         type={spec.secret ? "password" : "text"}
@@ -481,8 +409,8 @@ function FieldInput({ spec, value, onChange, editing }: { spec: FieldSpec; value
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={spec.secret && editing ? MASK : undefined}
-        className={spec.secret || spec.name === "url" || spec.name === "host" || spec.name === "port" ? "w-56 font-mono" : "w-56"}
+        className={spec.secret || spec.name === "url" || spec.name === "host" || spec.name === "port" ? "font-mono" : undefined}
       />
-    </div>
+    </Field>
   );
 }

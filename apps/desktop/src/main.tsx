@@ -5,6 +5,7 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import { I18nProvider } from "./lib/i18n";
 import { ThemeProvider } from "./lib/theme";
+import { AppContextProvider } from "./lib/context";
 import "./index.css";
 
 if (import.meta.env.DEV) {
@@ -30,9 +31,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <I18nProvider>
-          <HashRouter>
-            <App />
-          </HashRouter>
+          <AppContextProvider>
+            <HashRouter>
+              <App />
+            </HashRouter>
+          </AppContextProvider>
         </I18nProvider>
       </ThemeProvider>
     </QueryClientProvider>

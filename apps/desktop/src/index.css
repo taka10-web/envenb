@@ -29,7 +29,6 @@
   --border: oklch(0.905 0 0);
   --input: oklch(0.905 0 0);
   --ring: oklch(0.52 0.11 195);
-  --sidebar: oklch(0.965 0 0);
 }
 
 /* Dark tokens are class-based so the app can follow the user's setting
@@ -52,12 +51,11 @@
   --border: oklch(0.32 0.03 250);
   --input: oklch(0.32 0.03 250);
   --ring: oklch(0.72 0.11 195);
-  --sidebar: oklch(0.195 0.027 250);
   color-scheme: dark;
 }
 
 @theme inline {
-  /* Retro accent, kept subtle: tight corners, system font for body, pixel font for headings. */
+  /* Tight corners, system font for body, pixel font for the h1 and the brand only. */
   --radius-sm: 2px;
   --radius-md: 3px;
   --radius-lg: 4px;
@@ -66,11 +64,6 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   --font-pixel: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  /* Hard, offset "block" shadows. */
-  --shadow-block: 4px 4px 0 0 var(--color-border);
-  --shadow-block-sm: 2px 2px 0 0 var(--color-border);
-  --shadow-block-primary: 3px 3px 0 0 var(--color-primary);
-
   /* Goldfish loader: swim left → right with a gentle bob, then wrap around. */
   --animate-swim: swim 1.8s linear infinite;
   --animate-swim-slow: swim 2.6s linear -0.9s infinite;
@@ -99,7 +92,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
 }
 
 @layer base {

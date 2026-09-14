@@ -83,13 +83,14 @@ vi.mock("../lib/api", () => ({
 
 import { I18nProvider } from "../lib/i18n";
 import { ThemeProvider } from "../lib/theme";
+import { AppContextProvider } from "../lib/context";
 import { CredentialsPage } from "./CredentialsPage";
 
-function renderPage(path = "/projects/proj-1/credentials", withProject = true) {
+function renderPage({ projects = [project] }: { projects?: Project[] } = {}) {
   mocks.getSettings.mockResolvedValue(settings);
   mocks.setLanguage.mockResolvedValue(settings);
   mocks.setTheme.mockResolvedValue(settings);
-  mocks.listProjects.mockResolvedValue([project]);
+  mocks.listProjects.mockResolvedValue(projects);
   mocks.listEnvironments.mockResolvedValue([env]);
   mocks.credentialFieldSpecs.mockResolvedValue(specs);
   mocks.listCredentials.mockResolvedValue(credentials);
@@ -99,9 +100,11 @@ function renderPage(path = "/projects/proj-1/credentials", withProject = true) {
     <QueryClientProvider client={qc}>
       <ThemeProvider>
         <I18nProvider>
-          <MemoryRouter initialEntries={[path]}>
-            <CredentialsPage project={withProject ? project : undefined} />
-          </MemoryRouter>
+          <AppContextProvider>
+            <MemoryRouter initialEntries={["/credentials"]}>
+              <CredentialsPage />
+            </MemoryRouter>
+          </AppContextProvider>
         </I18nProvider>
       </ThemeProvider>
     </QueryClientProvider>,
@@ -138,16 +141,24 @@ describe("CredentialsPage", () => {
     expect(await screen.findByText("Copied · clears in 30s")).toBeInTheDocument();
   });
 
-  it("renders the account form from the field specs with password inputs for secret fields", async () => {
+  it("opens the add sheet and renders the account form from the field specs with password inputs for secret fields", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     await screen.findByText("staff-login");
+    expect(screen.queryByLabelText("Kind")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add credential" }));
+    expect(screen.getByRole("dialog", { name: "Add credential" })).toBeInTheDocument();
     expect(screen.getByLabelText("Kind")).toHaveValue("account");
     expect(screen.getByLabelText("URL")).toHaveAttribute("type", "text");
     expect(screen.getByLabelText(/^Username/)).toHaveAttribute("type", "password");
     expect(screen.getByLabelText(/^Password/)).toHaveAttribute("type", "password");
     expect(screen.getByLabelText(/^TOTP secret/)).toHaveAttribute("type", "password");
-    expect(screen.getByRole("button", { name: "Add credential" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    // Escape closes the sheet.
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("submits a new account credential once name and required fields are filled", async () => {
@@ -156,13 +167,14 @@ describe("CredentialsPage", () => {
     renderPage();
 
     await screen.findByText("staff-login");
+    await user.click(screen.getByRole("button", { name: "Add credential" }));
     await user.type(screen.getByLabelText("Name"), "my-account");
     await user.type(screen.getByLabelText("URL"), "https://example.com");
-    expect(screen.getByRole("button", { name: "Add credential" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     await user.type(screen.getByLabelText(/^Username/), "alice");
     await user.type(screen.getByLabelText(/^Password/), "pw-value");
-    expect(screen.getByRole("button", { name: "Add credential" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Add credential" }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(mocks.createCredential).toHaveBeenCalledWith({
@@ -177,6 +189,8 @@ describe("CredentialsPage", () => {
         ],
       }),
     );
+    // The sheet closes after a successful save.
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("switches the form fields when the kind changes and offers Load from file for multiline secrets", async () => {
@@ -184,6 +198,7 @@ describe("CredentialsPage", () => {
     renderPage();
 
     await screen.findByText("staff-login");
+    await user.click(screen.getByRole("button", { name: "Add credential" }));
     await user.selectOptions(screen.getByLabelText("Kind"), "ssh");
     expect(screen.getByLabelText(/^Host/)).toHaveAttribute("type", "text");
     expect(screen.getByLabelText(/^Private key/).tagName).toBe("TEXTAREA");
@@ -201,7 +216,7 @@ describe("CredentialsPage", () => {
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Update bastion" }));
-    expect(screen.getByText("Updating bastion")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Updating bastion" })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Host/)).toHaveValue("bastion.example.com");
     expect(screen.getByLabelText(/^Passphrase/)).toHaveValue("");
 
@@ -234,11 +249,12 @@ describe("CredentialsPage", () => {
     await waitFor(() => expect(mocks.deleteCredential).toHaveBeenCalledWith("cred-2"));
   });
 
-  it("groups credentials by project on the global route", async () => {
-    renderPage("/credentials", false);
+  it("guides to project creation when no project exists", async () => {
+    renderPage({ projects: [] });
 
-    await screen.findByText("my-app");
-    expect(screen.getByText("staff-login")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Manage/ })).toHaveAttribute("href", "/projects/proj-1/credentials");
+    await screen.findByText("Create a project to get started.");
+    expect(screen.getByRole("link", { name: "Create project" })).toHaveAttribute("href", "/projects");
+    expect(screen.queryByRole("button", { name: "Add credential" })).not.toBeInTheDocument();
+    expect(mocks.listCredentials).not.toHaveBeenCalled();
   });
 });
