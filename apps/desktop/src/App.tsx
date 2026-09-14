@@ -122,7 +122,9 @@ export default function App() {
         </nav>
       </aside>
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1040px] px-6 py-6">
+        {/* Centred column with real top margin, so content is not pinned to the
+            window edge on a wide screen. */}
+        <div className="mx-auto w-full max-w-[920px] px-10 pb-16 pt-10">
           <Routes>
             <Route path="/" element={<Navigate to="/variables" replace />} />
             <Route path="/variables" element={<VariablesPage />} />

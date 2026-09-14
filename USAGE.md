@@ -86,8 +86,18 @@ envfish var set-secret OPENAI_API_KEY             # 対話入力、画面には�
 op read "op://Dev/OpenAI/credential" | envfish var set-secret OPENAI_API_KEY   # パイプでも可
 ```
 
-変数名は `[A-Za-z_][A-Za-z0-9_]*`。同じ名前を PUBLIC と SECRET の両方では持てません
-(種別を変えるときは一度 `envfish var remove` してください)。
+変数名は `[A-Za-z_][A-Za-z0-9_]*` です。
+
+### 種別をあとから変える
+
+```bash
+envfish var kind API_TOKEN SECRET    # PUBLIC の値をそのまま暗号化
+```
+
+Desktop では一覧の `PUBLIC` バッジを押すと同じことができます。
+
+**SECRET → PUBLIC はできません。** 暗号化した値を AI が読める平文の列に戻すことになるためです。
+秘密でなかった場合は `envfish var remove` してから入れ直してください。
 
 ### 中身を確認する
 
@@ -319,7 +329,7 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 | `project add/list/remove` | プロジェクトの管理 |
 | `use <名前>` | 対象プロジェクトの選択 |
 | `env [<名前>] [--create]` | 環境の一覧・作成・選択 |
-| `var set/set-secret/list/remove` | 変数の管理 |
+| `var set/set-secret/list/kind/remove` | 変数の管理 (`kind` は PUBLIC → SECRET の変更) |
 | `run [--with-credentials] <コマンド>` | 値を注入してコマンドを実行 |
 | `import [ファイル] [--yes] [--dry-run] [--delete]` | `.env` の取り込み |
 | `clean [ディレクトリ] [--dry-run] [--yes]` | 取り込み済み `.env` の削除 |

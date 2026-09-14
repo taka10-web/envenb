@@ -72,6 +72,9 @@ export const api = {
   /** The value travels to Rust once and is sealed there. It is never returned. */
   setSecretVariable: (environmentId: string, name: string, value: string): Promise<Variable> =>
     call("set_secret_variable", VariableSchema, { environmentId, name, value }),
+  /** Keeps the value. PUBLIC -> SECRET only; the reverse is refused by the core. */
+  changeVariableKind: (environmentId: string, name: string, kind: VariableKind) =>
+    call("change_variable_kind", VariableSchema, { environmentId, name, kind }),
   deleteVariable: (environmentId: string, name: string) => call("delete_variable", z.null(), { environmentId, name }),
   renderEnvExample: (environmentId: string) => call("render_env_example", z.string(), { environmentId }),
 

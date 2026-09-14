@@ -301,6 +301,16 @@ pub enum VarCommand {
         #[arg(value_name = "NAME", help = tr("Variable name ([A-Za-z_][A-Za-z0-9_]*)", "変数名 ([A-Za-z_][A-Za-z0-9_]*)"))]
         name: String,
     },
+    #[command(about = tr(
+        "Change a variable's kind, keeping its value. PUBLIC -> SECRET only",
+        "変数の種別を値そのままで変更。PUBLIC -> SECRET のみ",
+    ))]
+    Kind {
+        #[arg(value_name = "NAME", help = tr("Variable name ([A-Za-z_][A-Za-z0-9_]*)", "変数名 ([A-Za-z_][A-Za-z0-9_]*)"))]
+        name: String,
+        #[arg(value_name = "KIND", help = tr("PUBLIC | SECRET", "PUBLIC | SECRET"))]
+        kind: String,
+    },
     #[command(about = tr("Remove a variable", "変数を削除"))]
     Remove {
         #[arg(value_name = "NAME", help = tr("Variable name ([A-Za-z_][A-Za-z0-9_]*)", "変数名 ([A-Za-z_][A-Za-z0-9_]*)"))]

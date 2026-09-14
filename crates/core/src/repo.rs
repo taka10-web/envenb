@@ -269,6 +269,21 @@ pub(crate) async fn find_sealed_secret(
     }))
 }
 
+/// The stored value of a PUBLIC variable. There is deliberately no equivalent
+/// for secrets outside the vault-backed path.
+pub async fn find_public_value(
+    pool: &SqlitePool,
+    environment_id: &str,
+    name: &str,
+) -> Result<Option<String>> {
+    let row = sqlx::query("SELECT value FROM variables WHERE environment_id = ? AND name = ?")
+        .bind(environment_id)
+        .bind(name)
+        .fetch_optional(pool)
+        .await?;
+    Ok(row.map(|r| r.get("value")))
+}
+
 pub async fn delete_variable_by_name(pool: &SqlitePool, environment_id: &str, name: &str) -> Result<bool> {
     let a = sqlx::query("DELETE FROM variables WHERE environment_id = ? AND name = ?")
         .bind(environment_id)

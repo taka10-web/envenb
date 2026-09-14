@@ -48,6 +48,7 @@ pub fn run() {
             commands::list_variables,
             commands::set_public_variable,
             commands::set_secret_variable,
+            commands::change_variable_kind,
             commands::delete_variable,
             commands::render_env_example,
             commands::preview_dotenv,

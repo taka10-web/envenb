@@ -49,6 +49,10 @@ function VariableTable({ environmentId }: { environmentId: string }) {
       invalidate();
     },
   });
+  const changeKind = useMutation({
+    mutationFn: ({ name, kind }: { name: string; kind: VariableKind }) => api.changeVariableKind(environmentId, name, kind),
+    onSuccess: invalidate,
+  });
   const remove = useMutation({ mutationFn: (n: string) => api.deleteVariable(environmentId, n), onSuccess: invalidate });
 
   // null = automatic: the import flow is open while the environment is empty
@@ -111,6 +115,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
       )}
 
       {save.error && <ErrorNote error={save.error} />}
+      {changeKind.error && <ErrorNote error={changeKind.error} />}
       {remove.error && <ErrorNote error={remove.error} />}
       {vars.error && <ErrorNote error={vars.error} />}
 
@@ -174,7 +179,29 @@ function VariableTable({ environmentId }: { environmentId: string }) {
             <Tr key={v.id}>
               <Td className="font-mono text-xs">{v.name}</Td>
               <Td>
-                <Badge variant={v.kind === "SECRET" ? "secret" : "public"}>{v.kind}</Badge>
+                {v.kind === "PUBLIC" ? (
+                  <button
+                    type="button"
+                    title={t("vars.makeSecretHint")}
+                    className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => {
+                      void confirmAsync(t("vars.confirmMakeSecret", { name: v.name }), {
+                        confirm: t("vars.makeSecret"),
+                        cancel: t("common.cancel"),
+                      }).then((ok) => {
+                        if (ok) changeKind.mutate({ name: v.name, kind: "SECRET" });
+                      });
+                    }}
+                  >
+                    <Badge variant="public" className="cursor-pointer hover:opacity-80">
+                      {v.kind}
+                    </Badge>
+                  </button>
+                ) : (
+                  <Badge variant="secret" title={t("vars.secretIsPermanent")}>
+                    {v.kind}
+                  </Badge>
+                )}
               </Td>
               <Td className="max-w-0 truncate font-mono text-xs text-muted-foreground">
                 {v.kind === "SECRET" ? <span title={t("vars.encryptedAtRest")}>••••••••</span> : v.value}

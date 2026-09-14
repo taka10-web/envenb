@@ -67,6 +67,20 @@ pub async fn run(ctx: &Ctx, command: VarCommand) -> anyhow::Result<()> {
             );
             Ok(())
         }
+        VarCommand::Kind { name, kind } => {
+            let kind: VariableKind = kind.parse().map_err(anyhow::Error::msg)?;
+            let v = ctx.app.change_variable_kind(&env.id, &name, kind).await?;
+            if ctx.json {
+                return output::print_json(&v);
+            }
+            println!(
+                "{} {} → {}",
+                tr("Changed kind:", "種別を変更しました:"),
+                v.name,
+                v.kind
+            );
+            Ok(())
+        }
         VarCommand::Remove { name } => {
             ctx.app.delete_variable(&env.id, &name).await?;
             if !ctx.json {

@@ -12,6 +12,11 @@ pub enum CoreError {
     #[error("variable not found: {0}")]
     VariableNotFound(String),
 
+    #[error(
+        "a SECRET cannot be turned into a PUBLIC variable; delete it and set the value again if it is not secret"
+    )]
+    CannotRevealSecret,
+
     #[error("connection not found: {0}")]
     ConnectionNotFound(String),
 

@@ -320,13 +320,45 @@ impl EnvFish {
     }
 
     /// A name may exist as PUBLIC or SECRET but not both. Changing kind requires an explicit delete.
+    /// A name lives in exactly one of the two tables. Writing it under the other
+    /// kind moves it: the old row is removed first so the value is never in both.
     async fn ensure_kind_slot(&self, environment_id: &str, name: &str, wanted: VariableKind) -> Result<()> {
-        match repo::find_variable_kind(&self.pool, environment_id, name).await? {
-            Some((_, existing)) if existing != wanted => Err(CoreError::AlreadyExists(match existing {
-                VariableKind::Public => "PUBLIC variable",
-                VariableKind::Secret => "SECRET variable",
-            })),
-            _ => Ok(()),
+        if let Some((_, existing)) = repo::find_variable_kind(&self.pool, environment_id, name).await?
+            && existing != wanted
+        {
+            repo::delete_variable_by_name(&self.pool, environment_id, name).await?;
+            tracing::info!(variable = %name, from = %existing, to = %wanted, "variable kind changed");
+        }
+        Ok(())
+    }
+
+    /// Change a variable's kind, keeping its current value.
+    ///
+    /// PUBLIC → SECRET seals the existing value. SECRET → PUBLIC would move a
+    /// secret into a plaintext column and is refused: an AI can read PUBLIC
+    /// values, so that direction has to be a deliberate re-entry of the value.
+    pub async fn change_variable_kind(
+        &self,
+        environment_id: &str,
+        name: &str,
+        to: VariableKind,
+    ) -> Result<Variable> {
+        let current = repo::find_variable_kind(&self.pool, environment_id, name)
+            .await?
+            .ok_or_else(|| CoreError::VariableNotFound(name.to_string()))?;
+        if current.1 == to {
+            return self.find_variable(environment_id, name).await;
+        }
+        match (current.1, to) {
+            (VariableKind::Public, VariableKind::Secret) => {
+                let value = repo::find_public_value(&self.pool, environment_id, name)
+                    .await?
+                    .ok_or_else(|| CoreError::VariableNotFound(name.to_string()))?;
+                self.set_secret_variable(environment_id, name, SecretValue::new(value))
+                    .await
+            }
+            (VariableKind::Secret, VariableKind::Public) => Err(CoreError::CannotRevealSecret),
+            _ => unreachable!("equal kinds handled above"),
         }
     }
 }
@@ -446,19 +478,71 @@ mod tests {
             "sk-live-000"
         );
 
-        // Kind conflicts are rejected.
-        assert!(matches!(
-            app.set_public_variable(&e.id, "OPENAI_API_KEY", "x").await,
-            Err(CoreError::AlreadyExists(_))
-        ));
-        assert!(matches!(
-            app.set_secret_variable(&e.id, "APP_URL", SecretValue::new("x"))
-                .await,
-            Err(CoreError::AlreadyExists(_))
-        ));
+        // Writing a name under the other kind moves it; it never exists as both.
+        let moved = app
+            .set_secret_variable(&e.id, "APP_URL", SecretValue::new("now-secret"))
+            .await
+            .unwrap();
+        assert_eq!(moved.kind, VariableKind::Secret);
+        let listed = app.list_variables(&e.id).await.unwrap();
+        assert_eq!(listed.iter().filter(|v| v.name == "APP_URL").count(), 1);
+        assert_eq!(
+            app.open_secret(&e.id, "APP_URL").await.unwrap().expose(),
+            "now-secret"
+        );
 
         app.delete_variable(&e.id, "OPENAI_API_KEY").await.unwrap();
         assert_eq!(app.list_variables(&e.id).await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn changing_kind_keeps_the_value_but_never_reveals_a_secret() {
+        let app = app().await;
+        let p = app.create_project("P", None).await.unwrap();
+        let e = app.create_environment(&p.id, "dev").await.unwrap();
+        app.set_public_variable(&e.id, "TOKEN", "was-public")
+            .await
+            .unwrap();
+
+        // PUBLIC -> SECRET seals the value that was already there.
+        let v = app
+            .change_variable_kind(&e.id, "TOKEN", VariableKind::Secret)
+            .await
+            .unwrap();
+        assert_eq!(v.kind, VariableKind::Secret);
+        assert_eq!(v.value, None);
+        assert_eq!(
+            app.open_secret(&e.id, "TOKEN").await.unwrap().expose(),
+            "was-public"
+        );
+
+        // The value is gone from the plaintext table.
+        let rows = sqlx::query("SELECT COUNT(*) AS n FROM variables WHERE name = 'TOKEN'")
+            .fetch_one(app.pool())
+            .await
+            .unwrap();
+        assert_eq!(rows.get::<i64, _>("n"), 0);
+
+        // SECRET -> PUBLIC is refused: it would move a secret into a readable column.
+        assert!(matches!(
+            app.change_variable_kind(&e.id, "TOKEN", VariableKind::Public)
+                .await,
+            Err(CoreError::CannotRevealSecret)
+        ));
+
+        // Asking for the kind it already has is a no-op, not an error.
+        assert_eq!(
+            app.change_variable_kind(&e.id, "TOKEN", VariableKind::Secret)
+                .await
+                .unwrap()
+                .kind,
+            VariableKind::Secret
+        );
+        assert!(matches!(
+            app.change_variable_kind(&e.id, "NOPE", VariableKind::Secret)
+                .await,
+            Err(CoreError::VariableNotFound(_))
+        ));
     }
 
     #[tokio::test]

@@ -136,6 +136,22 @@ pub async fn set_secret_variable(
         .map_err(map_err)
 }
 
+/// Change a variable's kind while keeping its value. PUBLIC -> SECRET only;
+/// the reverse would move a secret into a column an AI can read.
+#[tauri::command]
+pub async fn change_variable_kind(
+    state: State<'_, AppState>,
+    environment_id: String,
+    name: String,
+    kind: envfish_core::VariableKind,
+) -> CmdResult<Variable> {
+    state
+        .core
+        .change_variable_kind(&environment_id, &name, kind)
+        .await
+        .map_err(map_err)
+}
+
 #[tauri::command]
 pub async fn delete_variable(
     state: State<'_, AppState>,
