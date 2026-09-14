@@ -245,6 +245,7 @@ pub async fn export_example(ctx: &Ctx, file: &str) -> anyhow::Result<()> {
 /// file is created 0600, an existing file needs --force, and a path tracked by git
 /// is refused outright.
 pub async fn export_env(ctx: &Ctx, file: &str, force: bool, gitignore: bool) -> anyhow::Result<()> {
+    crate::human::require_human("envfish export-env")?;
     let project = ctx.current_project().await?;
     let env = ctx.current_environment().await?;
     let path = std::path::Path::new(file);

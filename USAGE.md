@@ -402,6 +402,14 @@ CLI と Desktop は同じデータディレクトリを読むため、片方で�
 
 ## 4. Secret に関して知っておくこと
 
+- **平文を出すコマンドは人間専用です。** `envfish run` / `export-env` / `ssh` / `cred copy` は対話端末からのみ実行でき、
+  Claude Code などのエージェントのセッション (環境変数 `CLAUDECODE` 等) の中では拒否されます。
+  AI がシェルを持っていても `envfish run env` で Vault を吐き出すことはできず、MCP の Broker を使うことになります。
+  自分で書いたスクリプトから使う場合だけ `ENVFISH_ALLOW_UNATTENDED=1` を付けてください。
+  `var list` や `status` のようなメタデータだけのコマンドは AI からも使えます。
+- **マスターキーの既定は macOS では Keychain です** (新規作成時)。ファイル方式のまま使う場合は
+  `envfish status` に警告が出ます。`ENVFISH_KEY_BACKEND=file` で既定を変えられます。
+
 - **SECRET は SQLite に平文で入りません。** Rust 側で XChaCha20-Poly1305 により暗号化してから保存します。
   `secrets` テーブルには平文カラム自体がありません。
 - **鍵は DB と別ファイル** (`master.key`) です。Phase 1 ではファイル保存のため、同じユーザーで動く

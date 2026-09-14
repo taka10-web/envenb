@@ -1,0 +1,62 @@
+//! Human-only gate for commands that let plaintext leave the vault.
+//!
+//! The MCP surface never returns secrets, but an AI agent with shell access could
+//! simply run `envfish run env`. These commands therefore require an interactive
+//! terminal and refuse to run inside known agent sessions. A deliberate override
+//! exists for scripts the human sets up themselves.
+
+use std::io::IsTerminal;
+
+use crate::i18n::tr;
+
+pub const OVERRIDE_ENV: &str = "ENVFISH_ALLOW_UNATTENDED";
+
+/// Environment variables that coding agents set in the shells they spawn.
+const AGENT_MARKERS: [&str; 6] = [
+    "CLAUDECODE",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CODEX_SANDBOX",
+    "CODEX_CI",
+    "CURSOR_AGENT",
+    "GEMINI_CLI",
+];
+
+pub fn agent_marker() -> Option<&'static str> {
+    AGENT_MARKERS.into_iter().find(|m| std::env::var_os(m).is_some())
+}
+
+/// Refuse unless a human is plausibly at the keyboard.
+pub fn require_human(what: &str) -> anyhow::Result<()> {
+    if std::env::var_os(OVERRIDE_ENV).is_some_and(|v| v == "1") {
+        return Ok(());
+    }
+    if let Some(marker) = agent_marker() {
+        anyhow::bail!(
+            "{what}: {} ({marker}). {}",
+            tr(
+                "refused inside an AI agent session",
+                "AI エージェントのセッション内では実行できません"
+            ),
+            tr(
+                "Secrets are for humans and for `envfish run` started from a real terminal; agents use the MCP broker.",
+                "Secret は人間と、実際の端末から起動した `envfish run` のためのものです。AI エージェントは MCP の Broker を使ってください。"
+            )
+        );
+    }
+    if !std::io::stdin().is_terminal() {
+        let hint = match crate::i18n::lang() {
+            crate::i18n::Lang::En => format!("Set {OVERRIDE_ENV}=1 only for scripts you run yourself."),
+            crate::i18n::Lang::Ja => {
+                format!("自分で実行するスクリプトに限り {OVERRIDE_ENV}=1 で許可できます。")
+            }
+        };
+        anyhow::bail!(
+            "{what}: {} {hint}",
+            tr(
+                "requires an interactive terminal.",
+                "対話端末からのみ実行できます。"
+            )
+        );
+    }
+    Ok(())
+}

@@ -349,8 +349,17 @@ agree; strings live in `src/lib/i18n.tsx`.
 - **Logs and errors carry identifiers only.** `CoreError` / `VaultError`
   variants embed names and paths, never values; AEAD failures are reported as
   one opaque `Decrypt` error.
+- **Plaintext-emitting commands are human-only.** `envfish run`, `export-env`,
+  `ssh` and `cred copy` require an interactive terminal and refuse to run inside
+  known agent sessions (`CLAUDECODE`, Codex, Cursor, Gemini CLI markers). An AI
+  with shell access therefore cannot call `envfish run env` to dump the vault;
+  it gets the MCP broker instead. `ENVFISH_ALLOW_UNATTENDED=1` opts a script
+  you run yourself back in. Metadata commands (`var list`, `status`, …) keep
+  working for agents.
 - **Master key is separate from the database.** Copying `envfish.db` alone
-  yields nothing. The default backend is a `0600` file; `envfish vault
+  yields nothing. New vaults on macOS default to the OS keychain
+  (`ENVFISH_KEY_BACKEND=file` overrides, and existing `master.key` files are kept);
+  elsewhere the default is a `0600` file and `envfish vault
   key-backend keychain` moves the key into the macOS Keychain / Windows
   Credential Manager / Linux Secret Service (read back before the file is
   deleted). Secrets need no re-encryption because the key bytes are unchanged.

@@ -9,6 +9,9 @@ fn envfish(home: &Path) -> Command {
     cmd.env("ENVFISH_HOME", home)
         .env("CI", "1")
         .env("ENVFISH_LANG", "en")
+        .env("ENVFISH_KEY_BACKEND", "file")
+        .env("ENVFISH_ALLOW_UNATTENDED", "1")
+        .env_remove("CLAUDECODE")
         .env_remove("RUST_LOG");
     cmd
 }
@@ -531,4 +534,47 @@ fn clean_deletes_only_fully_stored_dotenv_files() {
     assert!(out.contains("ONLY_HERE"));
     assert!(repo.join(".env.staging").exists());
     assert!(repo.join(".env.example").exists());
+}
+
+#[test]
+fn plaintext_commands_refuse_agents_and_non_terminals() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+    assert!(run(home, &["project", "add", "my-app"]).0);
+    assert!(run(home, &["env", "development", "--create"]).0);
+    assert!(run(home, &["var", "set", "APP_URL", "http://x"]).0);
+
+    // No terminal and no override → refused.
+    let out = envfish(home)
+        .env_remove("ENVFISH_ALLOW_UNATTENDED")
+        .args(["run", "sh", "-c", "echo $APP_URL"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("interactive terminal"));
+
+    // Inside a Claude Code session → refused even with the override absent/present.
+    let out = envfish(home)
+        .env("CLAUDECODE", "1")
+        .args(["run", "sh", "-c", "echo $APP_URL"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("AI agent session"));
+
+    // Metadata commands keep working for agents.
+    let out = envfish(home)
+        .env("CLAUDECODE", "1")
+        .args(["var", "list", "--json"])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    assert!(String::from_utf8_lossy(&out.stdout).contains("APP_URL"));
+    let out = envfish(home)
+        .env_remove("ENVFISH_ALLOW_UNATTENDED")
+        .args(["export-env", home.join("x.env").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(!home.join("x.env").exists());
 }

@@ -51,12 +51,38 @@ impl EnvFish {
     pub async fn open_at(paths: Paths) -> Result<Self> {
         paths.ensure_root()?;
         let pool = crate::db::open_pool(&paths.database()).await?;
-        let backend = crate::repo_ai::get_setting(&pool, crate::service_ai::SETTING_KEY_BACKEND)
-            .await?
-            .unwrap_or_else(|| "file".to_string());
+        let backend = match crate::repo_ai::get_setting(&pool, crate::service_ai::SETTING_KEY_BACKEND).await?
+        {
+            Some(b) => b,
+            None => {
+                let chosen = Self::default_key_backend(&paths);
+                crate::repo_ai::set_setting(&pool, crate::service_ai::SETTING_KEY_BACKEND, chosen).await?;
+                chosen.to_string()
+            }
+        };
         let provider = Self::provider_for(&paths, &backend)?;
         let vault = Vault::open(provider.as_ref())?;
         Ok(Self { pool, vault, paths })
+    }
+
+    /// Backend for a data directory that has no recorded choice yet.
+    ///
+    /// - `ENVFISH_KEY_BACKEND` (file | keychain) wins when set (tests, CI, scripts).
+    /// - An existing `master.key` file keeps the file backend (upgrade path).
+    /// - On macOS with the keychain feature, new vaults default to the OS keychain so
+    ///   that copying the data directory is not enough to read secrets.
+    /// - Otherwise `file`.
+    pub fn default_key_backend(paths: &Paths) -> &'static str {
+        if let Ok(v) = std::env::var("ENVFISH_KEY_BACKEND") {
+            return if v == "keychain" { "keychain" } else { "file" };
+        }
+        if paths.master_key().exists() || std::env::var_os("CI").is_some() {
+            return "file";
+        }
+        if cfg!(all(target_os = "macos", feature = "keychain")) {
+            return "keychain";
+        }
+        "file"
     }
 
     /// Build the master key provider for a backend name.

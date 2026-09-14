@@ -9,6 +9,7 @@ use crate::i18n::tr;
 /// child process only. This process's own environment is left untouched, and the
 /// values never reach stdout/stderr.
 pub async fn run(ctx: &Ctx, argv: Vec<String>, with_credentials: bool) -> anyhow::Result<()> {
+    crate::human::require_human("envfish run")?;
     let project = ctx.current_project().await?;
     let env = ctx.current_environment().await?;
     let (program, rest) = argv.split_first().context("empty command")?;

@@ -1,6 +1,7 @@
 mod cli;
 mod commands;
 mod fish;
+mod human;
 mod i18n;
 mod output;
 

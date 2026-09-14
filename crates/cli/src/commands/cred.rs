@@ -162,7 +162,8 @@ pub async fn run(ctx: &Ctx, command: CredCommand) -> anyhow::Result<()> {
             Ok(())
         }
         CredCommand::Copy { name, field } => {
-            if !std::io::stdout().is_terminal() || std::env::var_os("ENVFISH_MCP").is_some() {
+            crate::human::require_human("envfish cred copy")?;
+            if !std::io::stdout().is_terminal() {
                 anyhow::bail!(
                     "{}",
                     tr(
@@ -263,6 +264,7 @@ fn prompt_hidden(label: &str) -> anyhow::Result<String> {
 
 /// `envfish ssh <name> [args...]`: write the key to a 0600 temp file, run ssh, delete the file.
 pub async fn ssh(ctx: &Ctx, name: &str, extra: Vec<String>) -> anyhow::Result<()> {
+    crate::human::require_human("envfish ssh")?;
     let env = ctx.current_environment().await?;
     let c = ctx.app.resolve_credential(&env.id, name).await?;
     if c.kind != CredentialKind::Ssh {
