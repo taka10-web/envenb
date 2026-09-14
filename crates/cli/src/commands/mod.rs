@@ -106,7 +106,9 @@ pub async fn run(args: Cli, core: envfish_core::Result<EnvFish>) -> anyhow::Resu
             yes,
             dry_run,
             no_gitignore,
-        } => dotenv::import(&ctx, &file, yes, dry_run, !no_gitignore).await,
+            delete,
+        } => dotenv::import(&ctx, &file, yes, dry_run, !no_gitignore, delete).await,
+        Command::Clean { dir, dry_run, yes } => dotenv::clean(&ctx, dir.as_deref(), dry_run, yes).await,
         Command::ExportExample { file } => dotenv::export_example(&ctx, &file).await,
         Command::ExportEnv {
             file,

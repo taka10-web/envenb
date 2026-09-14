@@ -132,7 +132,8 @@ and `state.json` (current project/environment ids for the CLI). Never commit it.
 | `envfish env [<name> [--create]]` | list / select (create) an environment |
 | `envfish var list \| set <NAME> <value> \| set-secret <NAME> \| remove <NAME>` | variables of the current project/environment |
 | `envfish run <cmd...>` | run a command with the environment's variables **and decrypted secrets** injected into the child only |
-| `envfish import [.env] [--yes] [--dry-run] [--no-gitignore]` | import a `.env` with PUBLIC/SECRET classification (confirmed per variable on a TTY); the file is added to the repo's `.gitignore` |
+| `envfish import [.env] [--yes] [--dry-run] [--no-gitignore] [--delete]` | import a `.env` with PUBLIC/SECRET classification (confirmed per variable on a TTY); the file is added to the repo's `.gitignore`; `--delete` removes it afterwards (asks first) |
+| `envfish clean [dir] [--dry-run] [--yes]` | delete `.env*` files in the project folder whose variables are all stored in EnvFish; asks per file, never touches `.env.example` |
 | `envfish export-example [.env.example]` | write a `.env.example` (secrets blank) |
 | `envfish export-env [.env.local] [--force]` | write a real dotenv file (values included, mode 0600) for tools that only read files; refused if git tracks the path |
 | `envfish connection list \| add <name> --kind k --url u --secret SECRET_NAME [--auth style] [--meta k=v]... \| remove <name>` | external service connections (`generic_http`, `openai`, `supabase`, `cloudflare`, `vercel`, `github`, `aws`); the credential is the *name* of a SECRET |

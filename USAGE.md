@@ -174,8 +174,21 @@ envfish export-example           # .env.example を出力 (SECRET は空欄)
 **`.env.local` はどうするか**
 
 1. 取り込む: `envfish import .env.local` (development など対象の環境を選んでから)
-2. `.gitignore` への追記は自動で行われます (`--no-gitignore` で抑止)。ファイルは消すか残すか選べます
-3. アプリは `envfish run pnpm dev` で起動する。Next.js / Vite などは `.env.local` より環境変数を優先するため挙動は変わりません
+2. `.gitignore` への追記は自動で行われます (`--no-gitignore` で抑止)
+3. ファイルを消す: `envfish import .env.local --delete` (取り込み直後に確認して削除) または後から `envfish clean`。
+   ファイル内のすべての変数が EnvFish に保存済みのときだけ削除され、`.env.example` などのテンプレートには触りません。
+   Desktop では取り込み完了画面の「削除」ボタンから同じことができます (確認ダイアログ付き)
+4. アプリは `envfish run pnpm dev` で起動する。Next.js / Vite などは `.env.local` より環境変数を優先するため挙動は変わりません
+
+```bash
+envfish clean --dry-run     # 削除対象と、未保存の変数が残っているファイルを表示
+envfish clean               # 1 ファイルずつ y/N で確認
+envfish clean --yes         # 確認なし (CI 等)
+```
+
+**なぜ実値の `.env` を置いたままにしないのか**: Claude Code などの AI は作業ディレクトリのファイルを読みます。
+平文の `.env.local` が隣にあると、Vault と Broker で分離した意味がなくなります。値は EnvFish に置き、
+アプリには `envfish run` で渡すのが基本形です。
 
 ファイルしか読めないツール (エディタ拡張など) のために実値のファイルが必要なら、書き戻せます。
 

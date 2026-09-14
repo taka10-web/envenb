@@ -130,6 +130,18 @@ export const api = {
       { projectId, filename },
     ),
 
+  /** Delete a .env file in the project's local path once all of its variables are stored. */
+  deleteDotenvFile: (projectId: string, environmentId: string, filename: string) =>
+    call(
+      "delete_dotenv_file",
+      z.discriminatedUnion("status", [
+        z.object({ status: z.literal("removed"), path: z.string(), variables: z.number() }),
+        z.object({ status: z.literal("kept"), path: z.string(), uncovered: z.array(z.string()) }),
+        z.object({ status: z.literal("not_dotenv"), path: z.string() }),
+      ]),
+      { projectId, environmentId, filename },
+    ),
+
   // credentials (accounts / ssh / database / file). Secret fields never come back.
   listCredentials: (projectId: string) => call("list_credentials", z.array(CredentialSchema), { projectId }),
   credentialFieldSpecs: () =>

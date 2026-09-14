@@ -528,3 +528,40 @@ pub async fn ensure_gitignore(
         .map(Some)
         .map_err(|e| format!("gitignore: {e}"))
 }
+
+/// Delete a dotenv file in the project's local path, only if every variable in it
+/// is already stored in `environment_id`. Templates (.example) are never deleted.
+/// The UI asks the user for confirmation before calling this.
+#[tauri::command]
+pub async fn delete_dotenv_file(
+    state: State<'_, AppState>,
+    project_id: String,
+    environment_id: String,
+    filename: String,
+) -> CmdResult<envfish_core::dotenv::RemoveOutcome> {
+    let project = state.core.get_project(&project_id).await.map_err(map_err)?;
+    let local_path = project
+        .local_path
+        .ok_or_else(|| "project has no local path".to_string())?;
+    let name = filename.trim();
+    if name.contains('/')
+        || name.contains('\\')
+        || name.contains("..")
+        || !envfish_core::dotenv::is_dotenv_filename(name)
+    {
+        return Err(format!("refusing to delete {name}: not a .env file name"));
+    }
+    let known: std::collections::HashSet<String> = state
+        .core
+        .list_variables(&environment_id)
+        .await
+        .map_err(map_err)?
+        .into_iter()
+        .map(|v| v.name)
+        .collect();
+    let path = std::path::Path::new(&local_path).join(name);
+    if !path.exists() {
+        return Err(format!("{name} does not exist in {local_path}"));
+    }
+    envfish_core::dotenv::remove_if_covered(&path, &known).map_err(|e| e.to_string())
+}

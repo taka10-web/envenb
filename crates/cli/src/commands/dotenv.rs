@@ -8,7 +8,14 @@ use crate::commands::Ctx;
 use crate::i18n::tr;
 use crate::output;
 
-pub async fn import(ctx: &Ctx, file: &str, yes: bool, dry_run: bool, gitignore: bool) -> anyhow::Result<()> {
+pub async fn import(
+    ctx: &Ctx,
+    file: &str,
+    yes: bool,
+    dry_run: bool,
+    gitignore: bool,
+    delete: bool,
+) -> anyhow::Result<()> {
     let project = ctx.current_project().await?;
     let env = ctx.current_environment().await?;
     let text = std::fs::read_to_string(file)
@@ -112,14 +119,24 @@ pub async fn import(ctx: &Ctx, file: &str, yes: bool, dry_run: bool, gitignore: 
     if gitignore {
         report_gitignore(ctx, std::path::Path::new(file));
     }
-    println!();
-    println!(
-        "{}",
-        tr(
-            "Consider deleting the file — EnvFish now holds these values.",
-            "ファイルの削除を検討してください。値は EnvFish が保持しています。"
-        )
-    );
+    if delete {
+        let known = known_names(ctx, &env.id).await?;
+        let path = std::path::Path::new(file);
+        if yes || confirm_delete(path)? {
+            report_remove(ctx, envfish_core::dotenv::remove_if_covered(path, &known)?);
+        } else if !ctx.json {
+            println!("{}", tr("Kept the file.", "ファイルは残しました。"));
+        }
+    } else if !ctx.json {
+        println!();
+        println!(
+            "{}",
+            tr(
+                "Delete the file with `envfish clean` (or `import --delete`) — EnvFish now holds these values.",
+                "ファイルは `envfish clean` (または `import --delete`) で削除できます。値は EnvFish が保持しています。"
+            )
+        );
+    }
     Ok(())
 }
 
@@ -322,4 +339,108 @@ fn git_tracks(path: &std::path::Path) -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+async fn known_names(ctx: &Ctx, environment_id: &str) -> anyhow::Result<std::collections::HashSet<String>> {
+    Ok(ctx
+        .app
+        .list_variables(environment_id)
+        .await?
+        .into_iter()
+        .map(|v| v.name)
+        .collect())
+}
+
+/// Ask before deleting. Non-interactive sessions answer "no" unless --yes was given.
+fn confirm_delete(path: &std::path::Path) -> anyhow::Result<bool> {
+    if !std::io::stdin().is_terminal() {
+        return Ok(false);
+    }
+    eprint!("{} {} [y/N]: ", tr("Delete", "削除しますか:"), path.display());
+    std::io::stderr().flush().ok();
+    let mut answer = String::new();
+    std::io::stdin().read_line(&mut answer)?;
+    Ok(matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes"))
+}
+
+fn report_remove(ctx: &Ctx, outcome: envfish_core::dotenv::RemoveOutcome) {
+    use envfish_core::dotenv::RemoveOutcome::*;
+    if ctx.json {
+        let _ = output::print_json(&outcome);
+        return;
+    }
+    match outcome {
+        Removed { path, variables } => {
+            println!(
+                "{} {path} ({} {})",
+                tr("Deleted", "削除しました:"),
+                variables,
+                tr("variables", "変数")
+            )
+        }
+        Kept { path, uncovered } => println!(
+            "{} {path} — {} {}",
+            tr("Kept", "残しました:"),
+            tr("not yet stored in EnvFish:", "EnvFish に未登録:"),
+            uncovered.join(", ")
+        ),
+        NotDotenv { path } => println!(
+            "{} {path}",
+            tr("Skipped (not a .env file):", "対象外 (.env ではありません):")
+        ),
+    }
+}
+
+/// `envfish clean [DIR]`: remove dotenv files whose variables are all stored,
+/// asking for each file unless --yes.
+pub async fn clean(ctx: &Ctx, dir: Option<&str>, dry_run: bool, yes: bool) -> anyhow::Result<()> {
+    let project = ctx.current_project().await?;
+    let env = ctx.current_environment().await?;
+    let dir = match dir {
+        Some(d) => std::path::PathBuf::from(d),
+        None => project
+            .local_path
+            .clone()
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(".")),
+    };
+    let files = envfish_core::dotenv::dotenv_files_in(&dir);
+    if files.is_empty() {
+        if !ctx.json {
+            println!(
+                "{} {}",
+                tr("No .env files in", ".env ファイルはありません:"),
+                dir.display()
+            );
+        }
+        return Ok(());
+    }
+    let known = known_names(ctx, &env.id).await?;
+    if !ctx.json {
+        println!("{} / {} · {}", project.name, env.name, dir.display());
+    }
+    for file in files {
+        let text = std::fs::read_to_string(&file).unwrap_or_default();
+        let uncovered = envfish_core::dotenv::uncovered_names(&text, &known);
+        if !uncovered.is_empty() {
+            println!(
+                "{} {} — {} {}",
+                tr("keep", "残す:"),
+                file.display(),
+                tr("not yet stored:", "未登録:"),
+                uncovered.join(", ")
+            );
+            continue;
+        }
+        if dry_run {
+            println!("{} {}", tr("would delete", "削除対象:"), file.display());
+            continue;
+        }
+        if yes || confirm_delete(&file)? {
+            report_remove(ctx, envfish_core::dotenv::remove_if_covered(&file, &known)?);
+        } else if !ctx.json {
+            println!("{} {}", tr("kept", "残しました:"), file.display());
+        }
+    }
+    Ok(())
 }

@@ -118,6 +118,11 @@ const en = {
   "vars.import.reminderBody": "EnvFish now holds these values.",
   "vars.import.gitignoreAdded": "Added {pattern} to the project's .gitignore. Consider deleting the file — EnvFish now holds these values.",
   "vars.import.gitignoreAlready": ".gitignore already ignores this file. Consider deleting it — EnvFish now holds these values.",
+  "vars.import.deleteFile": "Delete {name} from the project",
+  "vars.import.confirmDeleteFile": "Delete {name} from the project folder? Only allowed when every variable in it is already stored in EnvFish.",
+  "vars.import.fileDeleted": "Deleted {name}. The values now live only in EnvFish.",
+  "vars.import.fileKept": "Kept the file: these variables are not stored yet: {names}",
+  "vars.import.fileNotDotenv": "Not a .env file; nothing deleted.",
   "vars.import.another": "Import another",
   "vars.import.close": "Close",
 
@@ -336,6 +341,11 @@ const ja: Record<keyof typeof en, string> = {
   "vars.import.reminderBody": "これらの値は EnvFish が保持しています。",
   "vars.import.gitignoreAdded": "プロジェクトの .gitignore に {pattern} を追記しました。ファイルの削除も検討してください。値は EnvFish が保持しています。",
   "vars.import.gitignoreAlready": ".gitignore は既にこのファイルを除外しています。ファイルの削除も検討してください。値は EnvFish が保持しています。",
+  "vars.import.deleteFile": "{name} をプロジェクトから削除",
+  "vars.import.confirmDeleteFile": "プロジェクトフォルダの {name} を削除しますか。ファイル内のすべての変数が EnvFish に保存済みの場合だけ削除されます。",
+  "vars.import.fileDeleted": "{name} を削除しました。値は EnvFish だけが保持しています。",
+  "vars.import.fileKept": "ファイルは残しました。未保存の変数があります: {names}",
+  "vars.import.fileNotDotenv": ".env ファイルではないため削除しませんでした。",
   "vars.import.another": "別のファイルを取り込む",
   "vars.import.close": "閉じる",
 

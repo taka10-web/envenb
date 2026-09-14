@@ -337,3 +337,115 @@ mod gitignore_tests {
         assert!(r.added.is_empty() && r.already == vec![".env.local"]);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Removing dotenv files that EnvFish already holds
+// ---------------------------------------------------------------------------
+
+/// Is `name` a dotenv file we would consider deleting? Templates are never touched.
+pub fn is_dotenv_filename(name: &str) -> bool {
+    (name == ".env" || name.starts_with(".env."))
+        && !name.ends_with(".example")
+        && !name.ends_with(".sample")
+        && !name.ends_with(".template")
+}
+
+/// Names in `text` that are **not** among `known` (variables stored in EnvFish).
+/// Empty result means the file is fully covered and safe to delete.
+pub fn uncovered_names(text: &str, known: &std::collections::HashSet<String>) -> Vec<String> {
+    let (entries, _) = parse(text);
+    entries
+        .into_iter()
+        .map(|e| e.name)
+        .filter(|n| !known.contains(n))
+        .collect()
+}
+
+/// Outcome of trying to remove one dotenv file.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum RemoveOutcome {
+    Removed { path: String, variables: usize },
+    Kept { path: String, uncovered: Vec<String> },
+    NotDotenv { path: String },
+}
+
+/// Delete `path` only if it is a dotenv file whose every variable is in `known`.
+pub fn remove_if_covered(
+    path: &std::path::Path,
+    known: &std::collections::HashSet<String>,
+) -> std::io::Result<RemoveOutcome> {
+    let display = path.display().to_string();
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if !is_dotenv_filename(name) {
+        return Ok(RemoveOutcome::NotDotenv { path: display });
+    }
+    let text = std::fs::read_to_string(path)?;
+    let uncovered = uncovered_names(&text, known);
+    if !uncovered.is_empty() {
+        return Ok(RemoveOutcome::Kept {
+            path: display,
+            uncovered,
+        });
+    }
+    let variables = parse(&text).0.len();
+    std::fs::remove_file(path)?;
+    Ok(RemoveOutcome::Removed {
+        path: display,
+        variables,
+    })
+}
+
+/// Dotenv files directly inside `dir` (not recursive) that EnvFish might clean up.
+pub fn dotenv_files_in(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut out: Vec<_> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.is_file()
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(is_dotenv_filename)
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+#[cfg(test)]
+mod remove_tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn only_fully_covered_dotenv_files_are_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = dir.path().join(".env.local");
+        std::fs::write(&env, "A=1\nB=2\n").unwrap();
+        let example = dir.path().join(".env.example");
+        std::fs::write(&example, "A=\n").unwrap();
+
+        let partial: HashSet<String> = ["A".to_string()].into();
+        assert!(
+            matches!(remove_if_covered(&env, &partial).unwrap(), RemoveOutcome::Kept { uncovered, .. } if uncovered == vec!["B"])
+        );
+        assert!(env.exists());
+
+        let full: HashSet<String> = ["A".to_string(), "B".to_string()].into();
+        assert!(matches!(
+            remove_if_covered(&env, &full).unwrap(),
+            RemoveOutcome::Removed { variables: 2, .. }
+        ));
+        assert!(!env.exists());
+
+        assert!(matches!(
+            remove_if_covered(&example, &full).unwrap(),
+            RemoveOutcome::NotDotenv { .. }
+        ));
+        assert!(example.exists());
+        assert_eq!(dotenv_files_in(dir.path()), Vec::<std::path::PathBuf>::new());
+    }
+}

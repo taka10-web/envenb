@@ -72,6 +72,7 @@ pub fn run() {
             commands::delete_credential,
             commands::copy_credential_field,
             commands::ensure_gitignore,
+            commands::delete_dotenv_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running EnvFish");

@@ -129,6 +129,23 @@ pub enum Command {
         dry_run: bool,
         #[arg(long, help = tr("Do not add the file to .gitignore", ".gitignore に追記しない"))]
         no_gitignore: bool,
+        #[arg(long, help = tr(
+            "Delete the file after a successful import (only when every variable in it is now stored)",
+            "取り込み成功後にファイルを削除 (ファイル内の全変数が保存済みの場合のみ)",
+        ))]
+        delete: bool,
+    },
+    #[command(about = tr(
+        "Delete .env files in the project directory whose variables are all stored in EnvFish",
+        "全変数が EnvFish に保存済みの .env ファイルをプロジェクトディレクトリから削除",
+    ))]
+    Clean {
+        #[arg(value_name = "DIR", help = tr("Directory to scan (default: the project's local path, else .)", "対象ディレクトリ (既定: プロジェクトのローカルパス、無ければ .)"))]
+        dir: Option<String>,
+        #[arg(long, help = tr("Show what would be deleted without deleting", "削除せず対象だけ表示"))]
+        dry_run: bool,
+        #[arg(long, help = tr("Delete without asking for each file", "ファイルごとの確認を省略"))]
+        yes: bool,
     },
     #[command(about = tr(
         "Write a real .env file (values included) for tools that cannot use `envfish run`. 0600, refused if git tracks the path",

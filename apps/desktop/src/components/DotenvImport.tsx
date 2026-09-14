@@ -1,12 +1,13 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Check, ClipboardPaste, Eye, EyeOff, FileDown, FolderOpen, Upload, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ClipboardPaste, Eye, EyeOff, FileDown, FolderOpen, Trash2, Upload, X } from "lucide-react";
 import { Badge, Button, cn, GoldfishInline, Label } from "@envfish/ui";
 import { api } from "../lib/api";
 import type { DotenvPreview, ImportReport, VariableKind } from "../lib/types";
 import { ErrorNote } from "./ErrorNote";
 import { Segmented } from "./Segmented";
 import { useI18n, type MessageKey } from "../lib/i18n";
+import { confirmAsync } from "../lib/confirm";
 
 // ---------------------------------------------------------------------------
 // Guided .env import: 1 Load (drop / choose / paste) → 2 Review (kinds, skips)
@@ -58,6 +59,27 @@ export function DotenvImport({
   const [rows, setRows] = useState<Row[]>([]);
   const [invalid, setInvalid] = useState<number[]>([]);
   const [report, setReport] = useState<ImportReport | null>(null);
+  const [fileOutcome, setFileOutcome] = useState<string | null>(null);
+  const deleteFile = useMutation({
+    mutationFn: () => api.deleteDotenvFile(projectId ?? "", environmentId, fileName ?? ""),
+    onSuccess: (o) => {
+      setFileOutcome(
+        o.status === "removed"
+          ? t("vars.import.fileDeleted", { name: fileName ?? "" })
+          : o.status === "kept"
+            ? t("vars.import.fileKept", { names: o.uncovered.join(", ") })
+            : t("vars.import.fileNotDotenv"),
+      );
+    },
+  });
+  const askDelete = () => {
+    void confirmAsync(t("vars.import.confirmDeleteFile", { name: fileName ?? "" }), {
+      confirm: t("common.delete"),
+      cancel: t("common.cancel"),
+    }).then((ok) => {
+      if (ok) deleteFile.mutate();
+    });
+  };
   const [gitignore, setGitignore] = useState<{ path: string; added: string[]; already: string[] } | null | "skipped">(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pasted = useRef(false);
@@ -112,6 +134,7 @@ export function DotenvImport({
     setInvalid([]);
     setReport(null);
     setGitignore(null);
+    setFileOutcome(null);
     preview.reset();
     doImport.reset();
   };
@@ -352,7 +375,14 @@ export function DotenvImport({
               </p>
             </div>
           </div>
+          {fileOutcome && <p className="mt-2 text-xs text-muted-foreground">{fileOutcome}</p>}
+          {deleteFile.error && <ErrorNote error={deleteFile.error} />}
           <div className="mt-4 flex gap-2">
+            {projectId && fileName && !fileOutcome && (
+              <Button type="button" size="sm" variant="destructive" onClick={askDelete} disabled={deleteFile.isPending}>
+                <Trash2 className="h-3.5 w-3.5" /> {t("vars.import.deleteFile", { name: fileName })}
+              </Button>
+            )}
             <Button type="button" size="sm" variant="outline" onClick={reset}>
               <Upload className="h-3.5 w-3.5" /> {t("vars.import.another")}
             </Button>
