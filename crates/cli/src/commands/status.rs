@@ -7,7 +7,7 @@ use crate::output;
 #[derive(Serialize)]
 struct StatusView {
     #[serde(flatten)]
-    report: envfish_core::StatusReport,
+    report: envenb_core::StatusReport,
     current_project: Option<String>,
     current_environment: Option<String>,
 }
@@ -25,7 +25,7 @@ pub async fn run(ctx: &Ctx) -> anyhow::Result<()> {
         });
     }
 
-    println!("  EnvFish");
+    println!("  EnvEnb");
     println!();
     let row = |label: &str, value: &str| println!("  {} {value}", pad_right(label, 14));
     row(tr("Data dir:", "データ:"), &report.data_dir);
@@ -35,8 +35,8 @@ pub async fn run(ctx: &Ctx) -> anyhow::Result<()> {
         row(
             "",
             tr(
-                "⚠ key file readable by any process as you — `envfish vault key-backend keychain` is recommended",
-                "⚠ 鍵ファイルは同一ユーザーの全プロセスから読めます。`envfish vault key-backend keychain` を推奨します",
+                "⚠ key file readable by any process as you — `envenb vault key-backend keychain` is recommended",
+                "⚠ 鍵ファイルは同一ユーザーの全プロセスから読めます。`envenb vault key-backend keychain` を推奨します",
             ),
         );
     }
@@ -57,8 +57,8 @@ pub async fn run(ctx: &Ctx) -> anyhow::Result<()> {
         tr("Project:", "選択中 PJ:"),
         &project.map(|p| p.name).unwrap_or_else(|| {
             tr(
-                "(none) — `envfish use <project>`",
-                "(未選択) — `envfish use <プロジェクト>`",
+                "(none) — `envenb use <project>`",
+                "(未選択) — `envenb use <プロジェクト>`",
             )
             .into()
         }),
@@ -67,8 +67,8 @@ pub async fn run(ctx: &Ctx) -> anyhow::Result<()> {
         tr("Environment:", "選択中環境:"),
         &environment.map(|e| e.name).unwrap_or_else(|| {
             tr(
-                "(none) — `envfish env <environment>`",
-                "(未選択) — `envfish env <環境>`",
+                "(none) — `envenb env <environment>`",
+                "(未選択) — `envenb env <環境>`",
             )
             .into()
         }),

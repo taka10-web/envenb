@@ -62,7 +62,7 @@ pub trait MasterKeyProvider: Send + Sync {
     /// Return the existing key, creating and persisting a new one if none exists yet.
     fn load_or_create(&self) -> Result<MasterKey, VaultError>;
 
-    /// Human-readable description of where the key is kept (for `envfish status`).
+    /// Human-readable description of where the key is kept (for `envenb status`).
     /// Must not reveal key material.
     fn describe(&self) -> String;
 }

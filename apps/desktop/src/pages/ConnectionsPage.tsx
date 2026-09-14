@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
-import { Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
+import { Button, MaikoInline, MaikoLoader, Input } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import { CONNECTION_KINDS, type Connection, type ConnectionKind } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
@@ -115,7 +115,7 @@ function EnvironmentConnections({ projectId, environmentId }: { projectId: strin
       <PageHeader title={t("connections.title")} context actions={addButton} />
       {conns.error && <ErrorNote error={conns.error} />}
       {remove.error && <ErrorNote error={remove.error} />}
-      {conns.isLoading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
+      {conns.isLoading && <MaikoLoader label={t("common.loading")} className="py-16" />}
       {conns.data && list.length === 0 && <EmptyState text={t("connections.empty")}>{addButton}</EmptyState>}
 
       <div className="flex flex-col gap-6">
@@ -288,7 +288,7 @@ function AddConnectionForm({ projectId, environmentId, onDone }: { projectId: st
       {vars.error && <ErrorNote error={vars.error} />}
       <div className="flex justify-end">
         <Button type="submit" disabled={!canSubmit}>
-          {create.isPending ? <GoldfishInline /> : <Plus className="h-4 w-4" />} {t("common.save")}
+          {create.isPending ? <MaikoInline /> : <Plus className="h-4 w-4" />} {t("common.save")}
         </Button>
       </div>
     </form>

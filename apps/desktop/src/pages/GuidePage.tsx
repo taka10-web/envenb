@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { Button } from "@envfish/ui";
+import { Button } from "@envenb/ui";
 import { PageHeader } from "../components/PageHeader";
 import { SectionLabel } from "../components/SectionLabel";
 import { useI18n } from "../lib/i18n";
@@ -34,7 +34,7 @@ function splitNumber(title: string): [string, string] {
 
 const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults: string[][] }> = {
   en: {
-    title: "How to use EnvFish",
+    title: "How to use EnvEnb",
     sections: [
       {
         title: "1. Install the CLI",
@@ -42,8 +42,8 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         steps: [
           {
             title: "From the repository",
-            body: "This puts `envfish` in ~/.cargo/bin. Re-run with --force after pulling changes.",
-            commands: [{ run: "pnpm install", note: "Installs the JavaScript dependencies of the desktop app." }, { run: "cargo install --path crates/cli --locked", note: "Builds the CLI and places the `envfish` binary in ~/.cargo/bin." }, { run: "envfish --version", note: "Checks that the command is on your PATH." }],
+            body: "This puts `envenb` in ~/.cargo/bin. Re-run with --force after pulling changes.",
+            commands: [{ run: "pnpm install", note: "Installs the JavaScript dependencies of the desktop app." }, { run: "cargo install --path crates/cli --locked", note: "Builds the CLI and places the `envenb` binary in ~/.cargo/bin." }, { run: "envenb --version", note: "Checks that the command is on your PATH." }],
           },
           {
             title: "If the command is not found",
@@ -60,7 +60,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "The CLI reads and writes the same data directory, so whatever you add here shows up there and vice versa.",
-            commands: [{ run: "envfish project add my-app --path ~/works/my-app", note: "Registers a project. --path is the local checkout, used by .gitignore and .env handling." }, { run: "envfish use my-app", note: "Makes it the current project for later commands." }, { run: "envfish env development --create", note: "Creates the environment if needed and selects it." }],
+            commands: [{ run: "envenb project add my-app --path ~/works/my-app", note: "Registers a project. --path is the local checkout, used by .gitignore and .env handling." }, { run: "envenb use my-app", note: "Makes it the current project for later commands." }, { run: "envenb env development --create", note: "Creates the environment if needed and selects it." }],
           },
         ],
       },
@@ -72,43 +72,43 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "Secrets are read from stdin so they never end up in shell history or `ps`.",
-            commands: [{ run: "envfish var set APP_URL http://localhost:3000", note: "Stores a PUBLIC variable. The value is plain and an AI may read it." }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envfish var set-secret SUPABASE_KEY", note: "Stores a SECRET from stdin, so it never reaches your shell history or `ps`." }, { run: "envfish import .env", note: "Imports a whole .env, asking PUBLIC or SECRET per variable, and adds the file to .gitignore." }],
+            commands: [{ run: "envenb var set APP_URL http://localhost:3000", note: "Stores a PUBLIC variable. The value is plain and an AI may read it." }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envenb var set-secret SUPABASE_KEY", note: "Stores a SECRET from stdin, so it never reaches your shell history or `ps`." }, { run: "envenb import .env", note: "Imports a whole .env, asking PUBLIC or SECRET per variable, and adds the file to .gitignore." }],
           },
         ],
       },
       {
         title: "4. Run your own app with everything injected",
         description: "Decrypted values go into the child process only. Do not start an AI agent this way; give it the broker instead.",
-        steps: [{ title: "Terminal", body: "ENVFISH_PROJECT and ENVFISH_ENVIRONMENT are set as well.", commands: [{ run: "envfish run pnpm dev", note: "Starts your command with the variables and decrypted secrets in its environment." }] }],
+        steps: [{ title: "Terminal", body: "ENVENB_PROJECT and ENVENB_ENVIRONMENT are set as well.", commands: [{ run: "envenb run pnpm dev", note: "Starts your command with the variables and decrypted secrets in its environment." }] }],
       },
       {
         title: "5. Describe the services an AI may use",
         description: "A connection is a base URL plus the name of the SECRET that authenticates it. The value stays in the vault.",
         steps: [
           { title: "In this app", body: "Connections → Add connection: kind (generic_http / openai / supabase / …), name, URL and the credential from the list of SECRET names in the current environment." },
-          { title: "From the terminal", body: "", commands: [{ run: "envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", note: "Defines a Supabase connection. --secret is the NAME of a stored SECRET, not its value." }, { run: "envfish connection add openai --kind openai --secret OPENAI_API_KEY", note: "Same for OpenAI; the base URL has a sensible default." }] },
+          { title: "From the terminal", body: "", commands: [{ run: "envenb connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", note: "Defines a Supabase connection. --secret is the NAME of a stored SECRET, not its value." }, { run: "envenb connection add openai --kind openai --secret OPENAI_API_KEY", note: "Same for OpenAI; the base URL has a sensible default." }] },
         ],
       },
       {
         title: "6. Connect Claude Code (MCP)",
-        description: "EnvFish runs as an MCP server. The AI gets list_* tools, call_service and supabase_select — no tool returns a secret.",
+        description: "EnvEnb runs as an MCP server. The AI gets list_* tools, call_service and supabase_select — no tool returns a secret.",
         steps: [
-          { title: "Register once", body: "Use a different --client name per tool (codex, cursor, …) so permissions and the audit log stay separate.", commands: [{ run: "claude mcp add envfish -- envfish mcp --client claude-code", note: "Registers EnvFish as an MCP server in Claude Code, under the client name claude-code." }] },
-          { title: "Then ask Claude", body: "For example: “Using EnvFish, list the beans table in my-app / development.” Claude calls supabase_select; EnvFish injects the key and returns rows." },
+          { title: "Register once", body: "Use a different --client name per tool (codex, cursor, …) so permissions and the audit log stay separate.", commands: [{ run: "claude mcp add envenb -- envenb mcp --client claude-code", note: "Registers EnvEnb as an MCP server in Claude Code, under the client name claude-code." }] },
+          { title: "Then ask Claude", body: "For example: “Using EnvEnb, list the beans table in my-app / development.” Claude calls supabase_select; EnvEnb injects the key and returns rows." },
         ],
       },
       {
         title: "7. Decide what the AI may do",
-        description: "Every brokered call is checked against your rules. ASK pauses the AI until you approve it here (AI Access) or with `envfish ai approve <id>`.",
+        description: "Every brokered call is checked against your rules. ASK pauses the AI until you approve it here (AI Access) or with `envenb ai approve <id>`.",
         steps: [
           { title: "In this app", body: "AI Access → pick client / project / environment / connection and set READ / WRITE / DELETE to ALLOW, ASK or DENY. Pending approvals appear at the top and refresh automatically." },
-          { title: "From the terminal", body: "", commands: [{ run: "envfish ai check --client claude-code --connection supabase", note: "Shows the effective READ / WRITE / DELETE decision for that client and connection." }, { run: "envfish ai permit WRITE ALLOW --client claude-code --connection supabase", note: "Writes a rule: this client may write to this connection without asking." }, { run: "envfish ai approvals", note: "Lists requests waiting for your decision, with their ids." }, { run: "envfish activity", note: "Shows the audit log: who called what, and whether it was allowed." }] },
+          { title: "From the terminal", body: "", commands: [{ run: "envenb ai check --client claude-code --connection supabase", note: "Shows the effective READ / WRITE / DELETE decision for that client and connection." }, { run: "envenb ai permit WRITE ALLOW --client claude-code --connection supabase", note: "Writes a rule: this client may write to this connection without asking." }, { run: "envenb ai approvals", note: "Lists requests waiting for your decision, with their ids." }, { run: "envenb activity", note: "Shows the audit log: who called what, and whether it was allowed." }] },
         ],
       },
       {
         title: "8. Harden the vault",
         description: "By default the master key is a 0600 file next to the database. Move it into the OS keychain when you are ready.",
-        steps: [{ title: "Terminal", body: "The key is copied, read back, and only then is the file removed. Secrets need no re-encryption.", commands: [{ run: "envfish vault key-backend keychain", note: "Moves the master key from the 0600 file into the OS keychain." }] }],
+        steps: [{ title: "Terminal", body: "The key is copied, read back, and only then is the file removed. Secrets need no re-encryption.", commands: [{ run: "envenb vault key-backend keychain", note: "Moves the master key from the 0600 file into the OS keychain." }] }],
       },
       {
         title: "9. Credentials for humans",
@@ -118,7 +118,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "The same records are available to the CLI, including SSH and wrapped commands that receive the credential as environment variables.",
-            commands: [{ run: "envfish cred add my-account --kind account", note: "Adds a test account. Username, password and TOTP seed are prompted for, hidden." }, { run: "envfish cred copy my-account --field password", note: "Copies one field to the clipboard and clears it after 30 seconds." }, { run: "envfish ssh bastion", note: "Opens SSH with the stored key, written to a 0600 temp file and deleted on exit." }, { run: "envfish run --with-credentials -- sqlplus ...", note: "Like `envfish run`, but also passes credential fields as ENVFISH_CRED_* variables." }],
+            commands: [{ run: "envenb cred add my-account --kind account", note: "Adds a test account. Username, password and TOTP seed are prompted for, hidden." }, { run: "envenb cred copy my-account --field password", note: "Copies one field to the clipboard and clears it after 30 seconds." }, { run: "envenb ssh bastion", note: "Opens SSH with the stored key, written to a 0600 temp file and deleted on exit." }, { run: "envenb run --with-credentials -- sqlplus ...", note: "Like `envenb run`, but also passes credential fields as ENVENB_CRED_* variables." }],
           },
           { title: "What the AI sees", body: "Only names and non-secret fields, through list_credentials. There is no tool that returns a password, key or file content." },
         ],
@@ -131,7 +131,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
     ],
   },
   ja: {
-    title: "EnvFish の使い方",
+    title: "EnvEnb の使い方",
     sections: [
       {
         title: "1. CLI をインストールする",
@@ -139,8 +139,8 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         steps: [
           {
             title: "リポジトリから",
-            body: "`envfish` が ~/.cargo/bin に入ります。更新時は --force を付けて入れ直してください。",
-            commands: [{ run: "pnpm install", note: "Desktop アプリの JavaScript 依存関係を入れます。" }, { run: "cargo install --path crates/cli --locked", note: "CLI をビルドし、`envfish` を ~/.cargo/bin に置きます。" }, { run: "envfish --version", note: "PATH が通っているかの確認です。" }],
+            body: "`envenb` が ~/.cargo/bin に入ります。更新時は --force を付けて入れ直してください。",
+            commands: [{ run: "pnpm install", note: "Desktop アプリの JavaScript 依存関係を入れます。" }, { run: "cargo install --path crates/cli --locked", note: "CLI をビルドし、`envenb` を ~/.cargo/bin に置きます。" }, { run: "envenb --version", note: "PATH が通っているかの確認です。" }],
           },
           {
             title: "コマンドが見つからない場合",
@@ -157,7 +157,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "CLI とこのアプリは同じデータを読み書きするため、どちらで登録しても双方に反映されます。",
-            commands: [{ run: "envfish project add my-app --path ~/works/my-app", note: "プロジェクトを登録します。--path はローカルの作業ディレクトリで、.gitignore や .env の処理に使われます。" }, { run: "envfish use my-app", note: "以降のコマンドの対象プロジェクトにします。" }, { run: "envfish env development --create", note: "環境が無ければ作成し、選択します。" }],
+            commands: [{ run: "envenb project add my-app --path ~/works/my-app", note: "プロジェクトを登録します。--path はローカルの作業ディレクトリで、.gitignore や .env の処理に使われます。" }, { run: "envenb use my-app", note: "以降のコマンドの対象プロジェクトにします。" }, { run: "envenb env development --create", note: "環境が無ければ作成し、選択します。" }],
           },
         ],
       },
@@ -169,43 +169,43 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "Secret は stdin から読み取るため、シェル履歴や ps に残りません。",
-            commands: [{ run: "envfish var set APP_URL http://localhost:3000", note: "PUBLIC 変数を保存します。値は平文で、AI からも読めます。" }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envfish var set-secret SUPABASE_KEY", note: "SECRET を標準入力から保存します。シェル履歴や `ps` に残りません。" }, { run: "envfish import .env", note: ".env をまとめて取り込みます。変数ごとに PUBLIC / SECRET を確認し、ファイルを .gitignore に追記します。" }],
+            commands: [{ run: "envenb var set APP_URL http://localhost:3000", note: "PUBLIC 変数を保存します。値は平文で、AI からも読めます。" }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envenb var set-secret SUPABASE_KEY", note: "SECRET を標準入力から保存します。シェル履歴や `ps` に残りません。" }, { run: "envenb import .env", note: ".env をまとめて取り込みます。変数ごとに PUBLIC / SECRET を確認し、ファイルを .gitignore に追記します。" }],
           },
         ],
       },
       {
         title: "4. 自分のアプリに注入して起動する",
         description: "復号した値は子プロセスにだけ渡ります。AI エージェント自体をこの方法で起こさず、AI には次の Broker 経由を使ってください。",
-        steps: [{ title: "ターミナル", body: "ENVFISH_PROJECT と ENVFISH_ENVIRONMENT も渡されます。", commands: [{ run: "envfish run pnpm dev", note: "変数と復号した Secret を環境変数に入れて、コマンドを起動します。" }] }],
+        steps: [{ title: "ターミナル", body: "ENVENB_PROJECT と ENVENB_ENVIRONMENT も渡されます。", commands: [{ run: "envenb run pnpm dev", note: "変数と復号した Secret を環境変数に入れて、コマンドを起動します。" }] }],
       },
       {
         title: "5. AI に使わせるサービスを定義する",
         description: "接続 = ベース URL + 認証に使う SECRET の「名前」。値は Vault から出ません。",
         steps: [
           { title: "このアプリで", body: "「接続」→ 接続を追加: 種別 (generic_http / openai / supabase など)・名前・URL を入力し、認証情報は現在の環境の SECRET 名の一覧から選びます。" },
-          { title: "ターミナルで", body: "", commands: [{ run: "envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", note: "Supabase 接続を定義します。--secret は保存済み SECRET の「名前」で、値ではありません。" }, { run: "envfish connection add openai --kind openai --secret OPENAI_API_KEY", note: "OpenAI も同様です。ベース URL には既定値があります。" }] },
+          { title: "ターミナルで", body: "", commands: [{ run: "envenb connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", note: "Supabase 接続を定義します。--secret は保存済み SECRET の「名前」で、値ではありません。" }, { run: "envenb connection add openai --kind openai --secret OPENAI_API_KEY", note: "OpenAI も同様です。ベース URL には既定値があります。" }] },
         ],
       },
       {
         title: "6. Claude Code をつなぐ (MCP)",
-        description: "EnvFish は MCP サーバーとして動きます。AI に見えるのは list_* 系と call_service / supabase_select だけで、Secret を返すツールはありません。",
+        description: "EnvEnb は MCP サーバーとして動きます。AI に見えるのは list_* 系と call_service / supabase_select だけで、Secret を返すツールはありません。",
         steps: [
-          { title: "一度だけ登録", body: "Codex や Cursor など別ツールは --client の名前を変えて登録すると、権限と監査ログが分かれます。", commands: [{ run: "claude mcp add envfish -- envfish mcp --client claude-code", note: "EnvFish を Claude Code に MCP サーバーとして登録します。クライアント名は claude-code です。" }] },
-          { title: "Claude に頼む", body: "例:「EnvFish を使って my-app / development の beans テーブルを一覧して」。Claude は supabase_select を呼び、EnvFish が鍵を付けて結果だけを返します。" },
+          { title: "一度だけ登録", body: "Codex や Cursor など別ツールは --client の名前を変えて登録すると、権限と監査ログが分かれます。", commands: [{ run: "claude mcp add envenb -- envenb mcp --client claude-code", note: "EnvEnb を Claude Code に MCP サーバーとして登録します。クライアント名は claude-code です。" }] },
+          { title: "Claude に頼む", body: "例:「EnvEnb を使って my-app / development の beans テーブルを一覧して」。Claude は supabase_select を呼び、EnvEnb が鍵を付けて結果だけを返します。" },
         ],
       },
       {
         title: "7. AI に許す操作を決める",
-        description: "Broker 経由の呼び出しはすべてルールで判定されます。ASK の間 AI は待機し、この画面 (AI アクセス) か `envfish ai approve <id>` で承認します。",
+        description: "Broker 経由の呼び出しはすべてルールで判定されます。ASK の間 AI は待機し、この画面 (AI アクセス) か `envenb ai approve <id>` で承認します。",
         steps: [
           { title: "このアプリで", body: "「AI アクセス」→ クライアント / プロジェクト / 環境 / 接続を選び、READ / WRITE / DELETE ごとに ALLOW・ASK・DENY を設定。承認待ちは画面上部に自動更新で並びます。" },
-          { title: "ターミナルで", body: "", commands: [{ run: "envfish ai check --client claude-code --connection supabase", note: "そのクライアントと接続に対する READ / WRITE / DELETE の実効判定を表示します。" }, { run: "envfish ai permit WRITE ALLOW --client claude-code --connection supabase", note: "ルールを書きます。このクライアントは、この接続への書き込みを確認なしで行えます。" }, { run: "envfish ai approvals", note: "あなたの判断を待っている要求を id 付きで一覧します。" }, { run: "envfish activity", note: "監査ログです。誰が何を呼び、許可されたかが分かります。" }] },
+          { title: "ターミナルで", body: "", commands: [{ run: "envenb ai check --client claude-code --connection supabase", note: "そのクライアントと接続に対する READ / WRITE / DELETE の実効判定を表示します。" }, { run: "envenb ai permit WRITE ALLOW --client claude-code --connection supabase", note: "ルールを書きます。このクライアントは、この接続への書き込みを確認なしで行えます。" }, { run: "envenb ai approvals", note: "あなたの判断を待っている要求を id 付きで一覧します。" }, { run: "envenb activity", note: "監査ログです。誰が何を呼び、許可されたかが分かります。" }] },
         ],
       },
       {
         title: "8. Vault を固める",
         description: "既定ではマスターキーは DB の隣の 0600 ファイルです。準備ができたら OS のキーチェーンへ移します。",
-        steps: [{ title: "ターミナル", body: "鍵を書き込んで読み戻せることを確認してからファイルを削除します。Secret の再暗号化は不要です。", commands: [{ run: "envfish vault key-backend keychain", note: "マスターキーを 0600 のファイルから OS のキーチェーンへ移します。" }] }],
+        steps: [{ title: "ターミナル", body: "鍵を書き込んで読み戻せることを確認してからファイルを削除します。Secret の再暗号化は不要です。", commands: [{ run: "envenb vault key-backend keychain", note: "マスターキーを 0600 のファイルから OS のキーチェーンへ移します。" }] }],
       },
       {
         title: "9. 人が使う資格情報",
@@ -215,7 +215,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "同じレコードを CLI からも使えます。SSH 接続や、資格情報を環境変数として受け取るコマンドの起動にも対応しています。",
-            commands: [{ run: "envfish cred add my-account --kind account", note: "テストアカウントを追加します。ユーザー名・パスワード・TOTP シードは非表示で入力します。" }, { run: "envfish cred copy my-account --field password", note: "フィールドを 1 つクリップボードにコピーし、30 秒後に消去します。" }, { run: "envfish ssh bastion", note: "保存した鍵で SSH に接続します。鍵は 0600 の一時ファイルに書かれ、終了時に消えます。" }, { run: "envfish run --with-credentials -- sqlplus ...", note: "`envfish run` に加えて、資格情報を ENVFISH_CRED_* として渡します。" }],
+            commands: [{ run: "envenb cred add my-account --kind account", note: "テストアカウントを追加します。ユーザー名・パスワード・TOTP シードは非表示で入力します。" }, { run: "envenb cred copy my-account --field password", note: "フィールドを 1 つクリップボードにコピーし、30 秒後に消去します。" }, { run: "envenb ssh bastion", note: "保存した鍵で SSH に接続します。鍵は 0600 の一時ファイルに書かれ、終了時に消えます。" }, { run: "envenb run --with-credentials -- sqlplus ...", note: "`envenb run` に加えて、資格情報を ENVENB_CRED_* として渡します。" }],
           },
           { title: "AI に見えるもの", body: "list_credentials で見えるのは名前と非 Secret 項目だけです。パスワード・鍵・ファイル内容を返すツールは存在しません。" },
         ],

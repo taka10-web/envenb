@@ -1,13 +1,13 @@
 [package]
-name = "envfish-mcp"
+name = "envenb-mcp"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "EnvFish MCP server (stdio). Exposes metadata and brokered actions to AI agents; never secret values."
+description = "EnvEnb MCP server (stdio). Exposes metadata and brokered actions to AI agents; never secret values."
 
 [dependencies]
-envfish-core = { workspace = true }
-envfish-broker = { workspace = true }
+envenb-core = { workspace = true }
+envenb-broker = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

@@ -7,7 +7,7 @@ import type { Environment, Project } from "./types";
 // bar. Pages read it instead of route params. The choice is cached in
 // localStorage; ids that no longer exist fall back to the first available item.
 
-const STORAGE_KEY = "envfish.context";
+const STORAGE_KEY = "envenb.context";
 
 type Stored = { projectId: string | null; environmentId: string | null };
 

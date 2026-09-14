@@ -2,7 +2,7 @@ use std::io::{IsTerminal, Read, Write};
 use std::process::{Command, Stdio};
 
 use anyhow::Context;
-use envfish_core::{CredentialFieldInput, CredentialKind, NewCredential, SecretValue};
+use envenb_core::{CredentialFieldInput, CredentialKind, NewCredential, SecretValue};
 
 use crate::cli::CredCommand;
 use crate::commands::Ctx;
@@ -143,7 +143,7 @@ pub async fn run(ctx: &Ctx, command: CredCommand) -> anyhow::Result<()> {
                     println!(
                         "  {:<14} ••••••••  ({})",
                         f.field,
-                        tr("copy: envfish cred copy", "コピー: envfish cred copy")
+                        tr("copy: envenb cred copy", "コピー: envenb cred copy")
                     );
                 } else {
                     println!("  {:<14} {}", f.field, f.value.clone().unwrap_or_default());
@@ -162,7 +162,7 @@ pub async fn run(ctx: &Ctx, command: CredCommand) -> anyhow::Result<()> {
             Ok(())
         }
         CredCommand::Copy { name, field } => {
-            crate::human::require_human("envfish cred copy")?;
+            crate::human::require_human("envenb cred copy")?;
             if !std::io::stdout().is_terminal() {
                 anyhow::bail!(
                     "{}",
@@ -173,10 +173,10 @@ pub async fn run(ctx: &Ctx, command: CredCommand) -> anyhow::Result<()> {
                 );
             }
             let c = ctx.app.resolve_credential(&env.id, &name).await?;
-            let ttl = envfish_core::clipboard::DEFAULT_TTL;
+            let ttl = envenb_core::clipboard::DEFAULT_TTL;
             if field == "totp" {
                 let code = ctx.app.credential_totp(&c.id).await?;
-                envfish_core::clipboard::copy_then_clear(&code, ttl).map_err(anyhow::Error::msg)?;
+                envenb_core::clipboard::copy_then_clear(&code, ttl).map_err(anyhow::Error::msg)?;
             } else {
                 if !c.fields.iter().any(|f| f.field == field && f.secret) {
                     anyhow::bail!(
@@ -189,7 +189,7 @@ pub async fn run(ctx: &Ctx, command: CredCommand) -> anyhow::Result<()> {
                 }
                 ctx.app
                     .with_credential_field(&c.id, &field, |v| {
-                        envfish_core::clipboard::copy_then_clear(v, ttl)
+                        envenb_core::clipboard::copy_then_clear(v, ttl)
                     })
                     .await?
                     .map_err(anyhow::Error::msg)?;
@@ -262,9 +262,9 @@ fn prompt_hidden(label: &str) -> anyhow::Result<String> {
     crate::commands::var::read_line_no_echo()
 }
 
-/// `envfish ssh <name> [args...]`: write the key to a 0600 temp file, run ssh, delete the file.
+/// `envenb ssh <name> [args...]`: write the key to a 0600 temp file, run ssh, delete the file.
 pub async fn ssh(ctx: &Ctx, name: &str, extra: Vec<String>) -> anyhow::Result<()> {
-    crate::human::require_human("envfish ssh")?;
+    crate::human::require_human("envenb ssh")?;
     let env = ctx.current_environment().await?;
     let c = ctx.app.resolve_credential(&env.id, name).await?;
     if c.kind != CredentialKind::Ssh {
@@ -285,13 +285,13 @@ pub async fn ssh(ctx: &Ctx, name: &str, extra: Vec<String>) -> anyhow::Result<()
     let port = get("port");
     let has_key = c.fields.iter().any(|f| f.field == "private_key" && f.secret);
 
-    let dir = tempfile::Builder::new().prefix("envfish-ssh-").tempdir()?;
+    let dir = tempfile::Builder::new().prefix("envenb-ssh-").tempdir()?;
     let mut cmd = Command::new("ssh");
     if let Some(p) = port {
         cmd.arg("-p").arg(p);
     }
     if has_key {
-        let key_path = dir.path().join("id_envfish");
+        let key_path = dir.path().join("id_envenb");
         ctx.app
             .with_credential_field(&c.id, "private_key", |key| write_private(&key_path, key))
             .await??;
@@ -303,7 +303,7 @@ pub async fn ssh(ctx: &Ctx, name: &str, extra: Vec<String>) -> anyhow::Result<()
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
     if !ctx.json {
-        eprintln!("  EnvFish · ssh {user}@{host} ({})", c.name);
+        eprintln!("  EnvEnb · ssh {user}@{host} ({})", c.name);
     }
     let status = cmd.status().context("failed to start ssh")?;
     drop(dir); // removes the key file

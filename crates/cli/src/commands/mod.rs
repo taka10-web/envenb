@@ -14,15 +14,15 @@ pub(crate) mod var;
 mod vault;
 
 use anyhow::Context;
-use envfish_core::{CliState, EnvFish, Environment, Project};
+use envenb_core::{CliState, EnvEnb, Environment, Project};
 
 use crate::cli::{Cli, Command, EnvArgs, ProjectCommand};
-use crate::fish;
 use crate::i18n::tr;
+use crate::maiko;
 
 /// Shared per-invocation context.
 pub struct Ctx {
-    pub app: EnvFish,
+    pub app: EnvEnb,
     pub state: CliState,
     pub json: bool,
 }
@@ -57,7 +57,7 @@ impl Ctx {
         let projects = self.app.list_projects().await.unwrap_or_default();
         if projects.is_empty() {
             return anyhow::anyhow!(
-                "{}\n  envfish project add <name> --path .",
+                "{}\n  envenb project add <name> --path .",
                 tr(
                     "no projects yet. Register one first:",
                     "プロジェクトがまだありません。まず登録してください:"
@@ -66,7 +66,7 @@ impl Ctx {
         }
         let names: Vec<&str> = projects.iter().map(|p| p.name.as_str()).take(5).collect();
         anyhow::anyhow!(
-            "{}\n  envfish use {}\n  ({} {})",
+            "{}\n  envenb use {}\n  ({} {})",
             tr(
                 "no project selected. Select one:",
                 "プロジェクトが未選択です。選択してください:"
@@ -84,14 +84,14 @@ impl Ctx {
         let envs = self.app.list_environments(&project.id).await.unwrap_or_default();
         if envs.is_empty() {
             return anyhow::anyhow!(
-                "{} {}\n  envfish env development --create",
+                "{} {}\n  envenb env development --create",
                 tr("no environments in", "環境がありません:"),
                 project.name
             );
         }
         let names: Vec<&str> = envs.iter().map(|e| e.name.as_str()).take(5).collect();
         anyhow::anyhow!(
-            "{}\n  envfish env {}\n  ({} {})",
+            "{}\n  envenb env {}\n  ({} {})",
             tr(
                 "no environment selected. Select one:",
                 "環境が未選択です。選択してください:"
@@ -103,12 +103,12 @@ impl Ctx {
     }
 }
 
-pub async fn run(args: Cli, core: envfish_core::Result<EnvFish>) -> anyhow::Result<()> {
+pub async fn run(args: Cli, core: envenb_core::Result<EnvEnb>) -> anyhow::Result<()> {
     let command = args.command.expect("subcommand presence is checked in main");
 
     let app = core.context(tr(
-        "failed to open EnvFish data directory",
-        "EnvFish のデータディレクトリを開けませんでした",
+        "failed to open EnvEnb data directory",
+        "EnvEnb のデータディレクトリを開けませんでした",
     ))?;
     let state = CliState::load(&app.paths().cli_state()).context(tr(
         "failed to load CLI state",
@@ -134,8 +134,8 @@ pub async fn run(args: Cli, core: envfish_core::Result<EnvFish>) -> anyhow::Resu
                 ..
             })
     );
-    if milestone && fish::should_animate(args.no_animation, args.json) {
-        fish::splash();
+    if milestone && maiko::should_animate(args.no_animation, args.json) {
+        maiko::splash();
     }
 
     match command {

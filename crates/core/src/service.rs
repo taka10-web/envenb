@@ -1,10 +1,10 @@
 //! The application service. Everything above this layer (CLI, desktop, daemon)
-//! talks to [`EnvFish`]; nothing above this layer touches the vault or SQL.
+//! talks to [`EnvEnb`]; nothing above this layer touches the vault or SQL.
 
 use chrono::Utc;
 #[cfg(feature = "keychain")]
-use envfish_vault::KeychainMasterKeyProvider;
-use envfish_vault::{FileMasterKeyProvider, MasterKeyProvider, Vault};
+use envenb_vault::KeychainMasterKeyProvider;
+use envenb_vault::{FileMasterKeyProvider, MasterKeyProvider, Vault};
 use serde::Serialize;
 use sqlx::SqlitePool;
 
@@ -14,7 +14,7 @@ use crate::paths::Paths;
 use crate::repo;
 use crate::secret::SecretValue;
 
-/// Snapshot for `envfish status` and the desktop overview. Contains counts and
+/// Snapshot for `envenb status` and the desktop overview. Contains counts and
 /// identifiers only.
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusReport {
@@ -25,22 +25,22 @@ pub struct StatusReport {
     pub secret_count: i64,
 }
 
-pub struct EnvFish {
+pub struct EnvEnb {
     pool: SqlitePool,
     vault: Vault,
     paths: Paths,
 }
 
-impl std::fmt::Debug for EnvFish {
+impl std::fmt::Debug for EnvEnb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EnvFish")
+        f.debug_struct("EnvEnb")
             .field("paths", &self.paths)
             .finish_non_exhaustive()
     }
 }
 
-impl EnvFish {
-    /// Open EnvFish at the default (or `ENVFISH_HOME`) data directory using the
+impl EnvEnb {
+    /// Open EnvEnb at the default (or `ENVENB_HOME`) data directory using the
     /// file-based master key provider.
     pub async fn open_default() -> Result<Self> {
         let paths = Paths::resolve()?;
@@ -67,13 +67,13 @@ impl EnvFish {
 
     /// Backend for a data directory that has no recorded choice yet.
     ///
-    /// - `ENVFISH_KEY_BACKEND` (file | keychain) wins when set (tests, CI, scripts).
+    /// - `ENVENB_KEY_BACKEND` (file | keychain) wins when set (tests, CI, scripts).
     /// - An existing `master.key` file keeps the file backend (upgrade path).
     /// - On macOS with the keychain feature, new vaults default to the OS keychain so
     ///   that copying the data directory is not enough to read secrets.
     /// - Otherwise `file`.
     pub fn default_key_backend(paths: &Paths) -> &'static str {
-        if let Ok(v) = std::env::var("ENVFISH_KEY_BACKEND") {
+        if let Some(v) = crate::env_compat::var("KEY_BACKEND") {
             return if v == "keychain" { "keychain" } else { "file" };
         }
         if paths.master_key().exists() || std::env::var_os("CI").is_some() {
@@ -90,7 +90,13 @@ impl EnvFish {
         match backend {
             "file" => Ok(Box::new(FileMasterKeyProvider::new(paths.master_key()))),
             #[cfg(feature = "keychain")]
-            "keychain" => Ok(Box::new(KeychainMasterKeyProvider::new(paths.profile()))),
+            "keychain" => {
+                let mut provider = KeychainMasterKeyProvider::new(paths.profile());
+                if let Some(legacy) = paths.legacy_profile() {
+                    provider = provider.with_legacy(legacy);
+                }
+                Ok(Box::new(provider))
+            }
             other => Err(CoreError::InvalidName(format!(
                 "unsupported key backend: {other}"
             ))),
@@ -391,11 +397,11 @@ fn validate_var_name(raw: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use envfish_vault::InMemoryMasterKeyProvider;
+    use envenb_vault::InMemoryMasterKeyProvider;
     use sqlx::Row;
 
-    async fn app() -> EnvFish {
-        EnvFish::open_in_memory(&InMemoryMasterKeyProvider::random())
+    async fn app() -> EnvEnb {
+        EnvEnb::open_in_memory(&InMemoryMasterKeyProvider::random())
             .await
             .unwrap()
     }

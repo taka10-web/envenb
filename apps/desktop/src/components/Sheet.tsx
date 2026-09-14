@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { Button } from "@envfish/ui";
+import { Button } from "@envenb/ui";
 import { useI18n } from "../lib/i18n";
 
 /**

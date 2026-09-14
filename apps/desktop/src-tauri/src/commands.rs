@@ -1,4 +1,4 @@
-use envfish_core::{
+use envenb_core::{
     Action, AiClient, Approval, ApprovalStatus, AuditEntry, Connection, ConnectionKind, Credential,
     CredentialFieldInput, CredentialKind, Decision, Environment, NewConnection, NewCredential, Permission,
     PermissionScope, Project, SecretValue, Settings, StatusReport, Variable,
@@ -12,7 +12,7 @@ use crate::AppState;
 /// Errors are flattened to their display string; `CoreError` never embeds secret values.
 type CmdResult<T> = Result<T, String>;
 
-fn map_err(err: envfish_core::CoreError) -> String {
+fn map_err(err: envenb_core::CoreError) -> String {
     tracing::warn!(error = %err, "command failed");
     err.to_string()
 }
@@ -143,7 +143,7 @@ pub async fn change_variable_kind(
     state: State<'_, AppState>,
     environment_id: String,
     name: String,
-    kind: envfish_core::VariableKind,
+    kind: envenb_core::VariableKind,
 ) -> CmdResult<Variable> {
     state
         .core
@@ -181,7 +181,7 @@ pub async fn render_env_example(state: State<'_, AppState>, environment_id: Stri
 pub struct DotenvPreviewEntry {
     pub name: String,
     pub value: String,
-    pub suggestion: envfish_core::dotenv::Suggestion,
+    pub suggestion: envenb_core::dotenv::Suggestion,
     pub line: usize,
 }
 
@@ -194,12 +194,12 @@ pub struct DotenvPreview {
 /// Parse `.env` text pasted or read in the UI and suggest kinds. Nothing is stored yet.
 #[tauri::command]
 pub async fn preview_dotenv(text: String) -> CmdResult<DotenvPreview> {
-    let (entries, invalid_lines) = envfish_core::dotenv::parse(&text);
+    let (entries, invalid_lines) = envenb_core::dotenv::parse(&text);
     Ok(DotenvPreview {
         entries: entries
             .into_iter()
             .map(|e| DotenvPreviewEntry {
-                suggestion: envfish_core::dotenv::classify(&e.name, &e.value),
+                suggestion: envenb_core::dotenv::classify(&e.name, &e.value),
                 name: e.name,
                 value: e.value,
                 line: e.line,
@@ -213,7 +213,7 @@ pub async fn preview_dotenv(text: String) -> CmdResult<DotenvPreview> {
 pub struct ImportEntry {
     pub name: String,
     pub value: String,
-    pub kind: envfish_core::VariableKind,
+    pub kind: envenb_core::VariableKind,
 }
 
 #[tauri::command]
@@ -221,7 +221,7 @@ pub async fn import_variables(
     state: State<'_, AppState>,
     environment_id: String,
     entries: Vec<ImportEntry>,
-) -> CmdResult<envfish_core::ImportReport> {
+) -> CmdResult<envenb_core::ImportReport> {
     let items = entries.into_iter().map(|e| (e.name, e.value, e.kind)).collect();
     state
         .core
@@ -411,7 +411,7 @@ pub async fn list_credentials(state: State<'_, AppState>, project_id: String) ->
 
 /// Field layouts per kind, so the UI renders the right form.
 #[tauri::command]
-pub fn credential_field_specs() -> Vec<(CredentialKind, Vec<envfish_core::FieldSpec>)> {
+pub fn credential_field_specs() -> Vec<(CredentialKind, Vec<envenb_core::FieldSpec>)> {
     CredentialKind::ALL
         .iter()
         .map(|k| (*k, k.fields().to_vec()))
@@ -498,19 +498,19 @@ pub async fn copy_credential_field(
     credential_id: String,
     field: String,
 ) -> CmdResult<u64> {
-    let ttl = envfish_core::clipboard::DEFAULT_TTL;
+    let ttl = envenb_core::clipboard::DEFAULT_TTL;
     let result = if field == "totp" {
         let code = state
             .core
             .credential_totp(&credential_id)
             .await
             .map_err(map_err)?;
-        envfish_core::clipboard::copy_then_clear(&code, ttl)
+        envenb_core::clipboard::copy_then_clear(&code, ttl)
     } else {
         state
             .core
             .with_credential_field(&credential_id, &field, |v| {
-                envfish_core::clipboard::copy_then_clear(v, ttl)
+                envenb_core::clipboard::copy_then_clear(v, ttl)
             })
             .await
             .map_err(map_err)?
@@ -525,13 +525,13 @@ pub async fn ensure_gitignore(
     state: State<'_, AppState>,
     project_id: String,
     filename: String,
-) -> CmdResult<Option<envfish_core::dotenv::GitignoreReport>> {
+) -> CmdResult<Option<envenb_core::dotenv::GitignoreReport>> {
     let project = state.core.get_project(&project_id).await.map_err(map_err)?;
     let Some(local_path) = project.local_path else {
         return Ok(None);
     };
     let dir = std::path::PathBuf::from(local_path);
-    let Some(root) = envfish_core::dotenv::git_root(&dir) else {
+    let Some(root) = envenb_core::dotenv::git_root(&dir) else {
         return Ok(None);
     };
     let name = filename.trim().trim_start_matches('/');
@@ -540,7 +540,7 @@ pub async fn ensure_gitignore(
     } else {
         name
     };
-    envfish_core::dotenv::ensure_gitignored(&root, &[safe])
+    envenb_core::dotenv::ensure_gitignored(&root, &[safe])
         .map(Some)
         .map_err(|e| format!("gitignore: {e}"))
 }
@@ -554,7 +554,7 @@ pub async fn delete_dotenv_file(
     project_id: String,
     environment_id: String,
     filename: String,
-) -> CmdResult<envfish_core::dotenv::RemoveOutcome> {
+) -> CmdResult<envenb_core::dotenv::RemoveOutcome> {
     let project = state.core.get_project(&project_id).await.map_err(map_err)?;
     let local_path = project
         .local_path
@@ -563,7 +563,7 @@ pub async fn delete_dotenv_file(
     if name.contains('/')
         || name.contains('\\')
         || name.contains("..")
-        || !envfish_core::dotenv::is_dotenv_filename(name)
+        || !envenb_core::dotenv::is_dotenv_filename(name)
     {
         return Err(format!("refusing to delete {name}: not a .env file name"));
     }
@@ -579,5 +579,5 @@ pub async fn delete_dotenv_file(
     if !path.exists() {
         return Err(format!("{name} does not exist in {local_path}"));
     }
-    envfish_core::dotenv::remove_if_covered(&path, &known).map_err(|e| e.to_string())
+    envenb_core::dotenv::remove_if_covered(&path, &known).map_err(|e| e.to_string())
 }

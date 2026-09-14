@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, Result};
 
-/// Persisted CLI selection (`envfish use` / `envfish env`).
+/// Persisted CLI selection (`envenb use` / `envenb env`).
 ///
 /// Stores identifiers only; never values.
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]

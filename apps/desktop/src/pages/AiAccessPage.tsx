@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Plus, Trash2, X } from "lucide-react";
-import { Badge, Button, cn, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
+import { Badge, Button, cn, MaikoInline, MaikoLoader, Input } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import { ACTIONS, DECISIONS, type Action, type Decision, type Permission } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
@@ -171,7 +171,7 @@ function ClientsSection() {
             <Td>
               <div className="flex justify-end">
                 <Button type="button" size="icon-sm" variant="ghost" aria-label={t("ai.clients.register")} disabled={!name.trim() || register.isPending} onClick={() => register.mutate()}>
-                  {register.isPending ? <GoldfishInline size={1} /> : <Plus className="h-4 w-4" />}
+                  {register.isPending ? <MaikoInline size={1} /> : <Plus className="h-4 w-4" />}
                 </Button>
               </div>
             </Td>
@@ -203,10 +203,10 @@ function ClientsSection() {
           ))}
         </tbody>
       </Table>
-      {clients.isLoading && <GoldfishLoader label={t("common.loading")} className="py-6" />}
+      {clients.isLoading && <MaikoLoader label={t("common.loading")} className="py-6" />}
       {clients.data?.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">{t("ai.clients.empty")}</p>}
       <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-        {t("ai.clients.description")} <code className="rounded bg-muted px-1 py-0.5 text-foreground">envfish mcp --client &lt;name&gt;</code>
+        {t("ai.clients.description")} <code className="rounded bg-muted px-1 py-0.5 text-foreground">envenb mcp --client &lt;name&gt;</code>
       </p>
     </section>
   );
@@ -375,7 +375,7 @@ function PermissionsSection() {
                             active ? DECISION_ACTIVE[d] : "border-border/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                           )}
                         >
-                          {q?.isLoading ? <GoldfishInline size={1} /> : active ? <Check className="h-3.5 w-3.5" /> : null}
+                          {q?.isLoading ? <MaikoInline size={1} /> : active ? <Check className="h-3.5 w-3.5" /> : null}
                         </button>
                       );
                     })}
@@ -404,7 +404,7 @@ function PermissionsSection() {
       {/* Explicit rules */}
       <div className="mt-8">
         <SectionLabel>{t("ai.rules.title")}</SectionLabel>
-        {permissions.isLoading && <GoldfishLoader label={t("common.loading")} className="py-6" />}
+        {permissions.isLoading && <MaikoLoader label={t("common.loading")} className="py-6" />}
         {permissions.data?.length === 0 && <p className="py-2 text-sm text-muted-foreground">{t("ai.rules.empty")}</p>}
         {permissions.data && permissions.data.length > 0 && (
           <Table>

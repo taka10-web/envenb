@@ -1,8 +1,8 @@
-//! `envfish scan`: look for stored secret values inside a working tree.
+//! `envenb scan`: look for stored secret values inside a working tree.
 //!
 //! Every SECRET of the selected environment(s) is decrypted in memory, and each
 //! text file under `dir` (skipping VCS / dependency / build folders and the
-//! EnvFish data dir) is searched for the exact value. Hits are reported as
+//! EnvEnb data dir) is searched for the exact value. Hits are reported as
 //! `file:line  VARIABLE_NAME`; the value itself is never printed. Tracked `.env`
 //! files (`git ls-files`) are reported as well.
 
@@ -52,16 +52,16 @@ pub async fn run(ctx: &Ctx, dir: &str, all_environments: bool) -> anyhow::Result
     };
 
     // (environment name, variable name, plaintext) — kept only for the scan.
-    let mut needles: Vec<(String, String, envfish_core::SecretValue)> = Vec::new();
+    let mut needles: Vec<(String, String, envenb_core::SecretValue)> = Vec::new();
     for env in &envs {
         for v in ctx.app.list_variables(&env.id).await? {
-            if v.kind == envfish_core::VariableKind::Secret {
+            if v.kind == envenb_core::VariableKind::Secret {
                 let value = ctx.app.with_secret(&env.id, &v.name, |s| s.to_string()).await?;
                 if value.len() >= 6 {
                     needles.push((
                         env.name.clone(),
                         v.name.clone(),
-                        envfish_core::SecretValue::new(value),
+                        envenb_core::SecretValue::new(value),
                     ));
                 }
             }

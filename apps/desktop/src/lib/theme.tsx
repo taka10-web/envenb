@@ -10,7 +10,7 @@ import type { Settings } from "./types";
 export type ThemeSetting = Settings["theme"];
 export type ResolvedTheme = "light" | "dark";
 
-const STORAGE_KEY = "envfish.theme";
+const STORAGE_KEY = "envenb.theme";
 const MEDIA = "(prefers-color-scheme: dark)";
 
 function readCached(): ThemeSetting {

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { cn, Goldfish } from "@envfish/ui";
+import { cn, Maiko, useDanceFrame } from "@envenb/ui";
 
-/** One fish, one sentence, at most one action. */
+/** One dancer, one sentence, at most one action. */
 export function EmptyState({ text, className, children }: { text: string; className?: string; children?: ReactNode }) {
+  const frame = useDanceFrame();
   return (
     <div className={cn("flex flex-col items-center gap-3 py-14 text-center", className)}>
-      <Goldfish variant="nishiki" size={5} />
+      <Maiko figure="standing" way="red" frame={frame} size={2} />
       <p className="text-sm text-muted-foreground">{text}</p>
       {children}
     </div>

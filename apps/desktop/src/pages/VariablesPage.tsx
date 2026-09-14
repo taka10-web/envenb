@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { ClipboardCopy, FileDown, Lock, Plus, Trash2, X } from "lucide-react";
-import { Badge, Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
+import { Badge, Button, MaikoInline, MaikoLoader, Input } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import type { VariableKind } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
@@ -95,7 +95,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
           {showImport ? <X className="h-3.5 w-3.5" /> : <FileDown className="h-3.5 w-3.5" />} {t("vars.import.button")}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => copyExample.mutate()} disabled={copyExample.isPending}>
-          {copyExample.isPending ? <GoldfishInline /> : <ClipboardCopy className="h-3.5 w-3.5" />} {t("vars.copyExample")}
+          {copyExample.isPending ? <MaikoInline /> : <ClipboardCopy className="h-3.5 w-3.5" />} {t("vars.copyExample")}
         </Button>
         {copied === "ok" && <span className="font-mono text-[11px] text-muted-foreground">{t("vars.copied")}</span>}
         {copied === "fail" && <span className="font-mono text-[11px] text-destructive">{t("vars.copyFailed")}</span>}
@@ -170,7 +170,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
             <Td>
               <div className="flex justify-end">
                 <Button type="button" size="icon-sm" variant="ghost" aria-label={t("common.add")} disabled={!name.trim() || !value || save.isPending} onClick={() => save.mutate()}>
-                  {save.isPending ? <GoldfishInline size={1} /> : <Plus className="h-4 w-4" />}
+                  {save.isPending ? <MaikoInline size={1} /> : <Plus className="h-4 w-4" />}
                 </Button>
               </div>
             </Td>
@@ -232,7 +232,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
           {t("vars.secretNote")}
         </p>
       )}
-      {vars.isLoading && <GoldfishLoader label={t("common.loading")} className="py-10" />}
+      {vars.isLoading && <MaikoLoader label={t("common.loading")} className="py-10" />}
       {isEmpty && !showImport && <p className="py-6 text-center text-sm text-muted-foreground">{t("vars.empty")}</p>}
     </div>
   );

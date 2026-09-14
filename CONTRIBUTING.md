@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking a look. EnvFish is a Cargo workspace plus a pnpm workspace.
+Thanks for taking a look. EnvEnb is a Cargo workspace plus a pnpm workspace.
 
 ## Prerequisites
 
@@ -19,13 +19,13 @@ pnpm dev            # Desktop app with hot reload
 
 - `cargo build` / `cargo test` cover the four crates. The Tauri crate is a
   workspace member but not a default member because it needs `apps/desktop/dist`
-  (`pnpm --filter @envfish/desktop build`) before `cargo build -p envfish-desktop`.
+  (`pnpm --filter @envenb/desktop build`) before `cargo build -p envenb-desktop`.
 - A **debug** build of the desktop binary loads the Vite dev server
-  (`devUrl`, port 1420), not `dist/`. Running `target/debug/envfish-desktop`
+  (`devUrl`, port 1420), not `dist/`. Running `target/debug/envenb-desktop`
   without Vite shows an empty window; use `pnpm dev`, which starts both.
-  `ENVFISH_DEVTOOLS=1 pnpm dev` opens the WebKit inspector on launch.
-- CLI help and messages follow `ENVFISH_LANG` (`ja` / `en`), falling back to
-  `LC_ALL` / `LC_MESSAGES` / `LANG`. Running `envfish` with no arguments shows
+  `ENVENB_DEVTOOLS=1 pnpm dev` opens the WebKit inspector on launch.
+- CLI help and messages follow `ENVENB_LANG` (`ja` / `en`), falling back to
+  `LC_ALL` / `LC_MESSAGES` / `LANG`. Running `envenb` with no arguments shows
   the splash and usage.
 - A step-by-step guide in Japanese lives in [USAGE.md](USAGE.md).
 - `cargo clippy --workspace --all-targets` and `cargo fmt --all -- --check` are clean.
@@ -46,7 +46,7 @@ pnpm dev            # Desktop app with hot reload
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --no-fail-fast
-pnpm typecheck && pnpm test && pnpm --filter @envfish/desktop build
+pnpm typecheck && pnpm test && pnpm --filter @envenb/desktop build
 ```
 
 These are exactly what CI runs.
@@ -62,6 +62,6 @@ rules that secret handling must not break.
 Two rules, both enforced by tests:
 
 1. No API — CLI, Tauri command, MCP tool or agent request — may return a secret value.
-   Decryption stays inside `envfish-core`, behind `with_secret` / `with_credential_field`.
+   Decryption stays inside `envenb-core`, behind `with_secret` / `with_credential_field`.
 2. Anything that puts plaintext in front of a person must go through the human gate
    in `crates/cli/src/human.rs`.

@@ -16,10 +16,13 @@ apps/desktop/src-tauri/target/
 *.db-wal
 *.db-shm
 master.key
-.envfish/
+.envenb/
 
 # OS / editors
 .DS_Store
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Sprite tracing workspace (reference art, generated sheets)
+.design/

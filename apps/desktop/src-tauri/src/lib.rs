@@ -1,4 +1,4 @@
-//! Tauri shell around `envfish-core`.
+//! Tauri shell around `envenb-core`.
 //!
 //! The command surface below is the *entire* IPC contract with the React side.
 //! It mirrors the Local Agent's request set: listing returns metadata only, and
@@ -7,25 +7,25 @@
 
 mod commands;
 
-use envfish_core::EnvFish;
+use envenb_core::EnvEnb;
 
 pub struct AppState {
-    pub core: EnvFish,
+    pub core: EnvEnb,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_tracing();
 
-    let core = tauri::async_runtime::block_on(EnvFish::open_default())
-        .unwrap_or_else(|err| panic!("failed to open EnvFish data directory: {err}"));
+    let core = tauri::async_runtime::block_on(EnvEnb::open_default())
+        .unwrap_or_else(|err| panic!("failed to open EnvEnb data directory: {err}"));
 
     tauri::Builder::default()
         .manage(AppState { core })
         .setup(|app| {
-            // Opt-in devtools for debugging the webview: ENVFISH_DEVTOOLS=1 pnpm dev
+            // Opt-in devtools for debugging the webview: ENVENB_DEVTOOLS=1 pnpm dev
             #[cfg(debug_assertions)]
-            if std::env::var_os("ENVFISH_DEVTOOLS").is_some() {
+            if envenb_core::env_compat::is_set("DEVTOOLS") {
                 use tauri::Manager;
                 if let Some(window) = app.get_webview_window("main") {
                     window.open_devtools();
@@ -76,12 +76,12 @@ pub fn run() {
             commands::delete_dotenv_file,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running EnvFish");
+        .expect("error while running EnvEnb");
 }
 
 fn init_tracing() {
     use tracing_subscriber::EnvFilter;
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("envfish=info"));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("envenb=info"));
     let _ = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)

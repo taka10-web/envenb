@@ -1,6 +1,6 @@
 //! CLI message locale.
 //!
-//! Resolution order: `ENVFISH_LANG` (`ja` / `en`), then `LC_ALL`, `LC_MESSAGES`,
+//! Resolution order: `ENVENB_LANG` (`ja` / `en`), then `LC_ALL`, `LC_MESSAGES`,
 //! `LANG`. Anything starting with `ja` selects Japanese; everything else English.
 //! `tr(en, ja)` returns the right static string, which lets clap's derive
 //! attributes (`about = tr(..)`) and runtime `println!` share one mechanism.
@@ -19,14 +19,14 @@ pub fn lang() -> Lang {
     *LANG.get_or_init(|| detect(None))
 }
 
-/// Fix the language for this process. Precedence: `ENVFISH_LANG` env var, then the
+/// Fix the language for this process. Precedence: `ENVENB_LANG` env var, then the
 /// persisted setting (`ja` / `en`; `system` defers), then the OS locale variables.
 pub fn init(setting: Option<&str>) {
     let _ = LANG.set(detect(setting));
 }
 
 fn detect(setting: Option<&str>) -> Lang {
-    if let Ok(v) = std::env::var("ENVFISH_LANG") {
+    if let Some(v) = envenb_core::env_compat::var("LANG") {
         return match v.to_ascii_lowercase().as_str() {
             "ja" | "ja_jp" | "japanese" => Lang::Ja,
             _ => Lang::En,
@@ -62,7 +62,7 @@ pub fn tr(en: &'static str, ja: &'static str) -> &'static str {
 /// Render an error for the active locale. Core errors carry identifiers only, so
 /// translating them here never touches secret material.
 pub fn describe_error(err: &anyhow::Error) -> String {
-    use envfish_core::CoreError as E;
+    use envenb_core::CoreError as E;
     if lang() == Lang::En {
         return format!("{err:#}");
     }
@@ -74,10 +74,10 @@ pub fn describe_error(err: &anyhow::Error) -> String {
             E::AlreadyExists(what) => format!("同じ名前の {what} が既に存在します"),
             E::InvalidName(msg) => format!("名前が不正です: {msg}"),
             E::NoCurrentProject => {
-                "プロジェクトが未選択です。先に `envfish use <プロジェクト>` を実行してください".into()
+                "プロジェクトが未選択です。先に `envenb use <プロジェクト>` を実行してください".into()
             }
             E::NoCurrentEnvironment => {
-                "環境が未選択です。先に `envfish env <環境>` を実行してください".into()
+                "環境が未選択です。先に `envenb env <環境>` を実行してください".into()
             }
             E::Vault(_) => format!("Vault エラー: {core}"),
             E::Database(_) => format!("データベースエラー: {core}"),

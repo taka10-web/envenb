@@ -1,7 +1,7 @@
 //! The AI Permission Engine.
 //!
 //! Input: who (client), where (project / environment / connection), what (action).
-//! Output: ALLOW / ASK / DENY. Only EnvFish's own rules are consulted — never text
+//! Output: ALLOW / ASK / DENY. Only EnvEnb's own rules are consulted — never text
 //! supplied by the AI client.
 //!
 //! Resolution: among stored rules whose scope matches (a `None` field matches

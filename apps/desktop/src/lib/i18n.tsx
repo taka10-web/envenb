@@ -120,12 +120,12 @@ const en = {
   "vars.import.report": "Imported {publicAdded} public and {secretAdded} secret variables · {skipped} skipped",
   "vars.import.skippedNames": "Skipped:",
   "vars.import.reminderTitle": "Add .env to .gitignore and consider deleting the file",
-  "vars.import.reminderBody": "EnvFish now holds these values.",
-  "vars.import.gitignoreAdded": "Added {pattern} to the project's .gitignore. Consider deleting the file — EnvFish now holds these values.",
-  "vars.import.gitignoreAlready": ".gitignore already ignores this file. Consider deleting it — EnvFish now holds these values.",
+  "vars.import.reminderBody": "EnvEnb now holds these values.",
+  "vars.import.gitignoreAdded": "Added {pattern} to the project's .gitignore. Consider deleting the file — EnvEnb now holds these values.",
+  "vars.import.gitignoreAlready": ".gitignore already ignores this file. Consider deleting it — EnvEnb now holds these values.",
   "vars.import.deleteFile": "Delete {name} from the project",
-  "vars.import.confirmDeleteFile": "Delete {name} from the project folder? Only allowed when every variable in it is already stored in EnvFish.",
-  "vars.import.fileDeleted": "Deleted {name}. The values now live only in EnvFish.",
+  "vars.import.confirmDeleteFile": "Delete {name} from the project folder? Only allowed when every variable in it is already stored in EnvEnb.",
+  "vars.import.fileDeleted": "Deleted {name}. The values now live only in EnvEnb.",
   "vars.import.fileKept": "Kept the file: these variables are not stored yet: {names}",
   "vars.import.fileNotDotenv": "Not a .env file; nothing deleted.",
   "vars.import.another": "Import another",
@@ -348,12 +348,12 @@ const ja: Record<keyof typeof en, string> = {
   "vars.import.report": "PUBLIC {publicAdded} 件、SECRET {secretAdded} 件を取り込みました · スキップ {skipped} 件",
   "vars.import.skippedNames": "スキップ:",
   "vars.import.reminderTitle": ".env を .gitignore に追加し、ファイルの削除もご検討ください",
-  "vars.import.reminderBody": "これらの値は EnvFish が保持しています。",
-  "vars.import.gitignoreAdded": "プロジェクトの .gitignore に {pattern} を追記しました。ファイルの削除も検討してください。値は EnvFish が保持しています。",
-  "vars.import.gitignoreAlready": ".gitignore は既にこのファイルを除外しています。ファイルの削除も検討してください。値は EnvFish が保持しています。",
+  "vars.import.reminderBody": "これらの値は EnvEnb が保持しています。",
+  "vars.import.gitignoreAdded": "プロジェクトの .gitignore に {pattern} を追記しました。ファイルの削除も検討してください。値は EnvEnb が保持しています。",
+  "vars.import.gitignoreAlready": ".gitignore は既にこのファイルを除外しています。ファイルの削除も検討してください。値は EnvEnb が保持しています。",
   "vars.import.deleteFile": "{name} をプロジェクトから削除",
-  "vars.import.confirmDeleteFile": "プロジェクトフォルダの {name} を削除しますか。ファイル内のすべての変数が EnvFish に保存済みの場合だけ削除されます。",
-  "vars.import.fileDeleted": "{name} を削除しました。値は EnvFish だけが保持しています。",
+  "vars.import.confirmDeleteFile": "プロジェクトフォルダの {name} を削除しますか。ファイル内のすべての変数が EnvEnb に保存済みの場合だけ削除されます。",
+  "vars.import.fileDeleted": "{name} を削除しました。値は EnvEnb だけが保持しています。",
   "vars.import.fileKept": "ファイルは残しました。未保存の変数があります: {names}",
   "vars.import.fileNotDotenv": ".env ファイルではないため削除しませんでした。",
   "vars.import.another": "別のファイルを取り込む",
@@ -471,7 +471,7 @@ const ja: Record<keyof typeof en, string> = {
 export type MessageKey = keyof typeof en;
 const DICTS: Record<Locale, Record<MessageKey, string>> = { en, ja };
 
-const STORAGE_KEY = "envfish.locale";
+const STORAGE_KEY = "envenb.locale";
 
 function systemLocale(): Locale {
   return navigator.language.toLowerCase().startsWith("ja") ? "ja" : "en";

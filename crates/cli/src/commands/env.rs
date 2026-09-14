@@ -33,7 +33,7 @@ pub async fn run(ctx: &mut Ctx, args: EnvArgs) -> anyhow::Result<()> {
 
     let env = match ctx.app.resolve_environment(&project.id, &target).await {
         Ok(e) => e,
-        Err(envfish_core::CoreError::EnvironmentNotFound(_)) if args.create => {
+        Err(envenb_core::CoreError::EnvironmentNotFound(_)) if args.create => {
             let e = ctx.app.create_environment(&project.id, &target).await?;
             if !ctx.json {
                 println!("{} {}", tr("Created environment", "環境を作成しました:"), e.name);

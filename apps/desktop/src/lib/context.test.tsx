@@ -54,11 +54,11 @@ describe("AppContextProvider", () => {
   it("defaults to the first project and environment and persists the choice", async () => {
     renderCtx();
     await waitFor(() => expect(screen.getByTestId("ctx")).toHaveTextContent("p1/e1"));
-    expect(JSON.parse(window.localStorage.getItem("envfish.context")!)).toEqual({ projectId: "p1", environmentId: "e1" });
+    expect(JSON.parse(window.localStorage.getItem("envenb.context")!)).toEqual({ projectId: "p1", environmentId: "e1" });
   });
 
   it("restores a stored selection and heals ids that no longer exist", async () => {
-    window.localStorage.setItem("envfish.context", JSON.stringify({ projectId: "p2", environmentId: "gone" }));
+    window.localStorage.setItem("envenb.context", JSON.stringify({ projectId: "p2", environmentId: "gone" }));
     renderCtx();
     await waitFor(() => expect(screen.getByTestId("ctx")).toHaveTextContent("p2/e3"));
   });

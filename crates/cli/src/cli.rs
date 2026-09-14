@@ -9,28 +9,28 @@ fn help_template() -> &'static str {
     }
 }
 
-/// EnvFish — local secrets, AI never sees them.
+/// EnvEnb — local secrets, AI never sees them.
 #[derive(Parser, Debug)]
 #[command(
-    name = "envfish",
+    name = "envenb",
     version,
     about = tr(
-        "EnvFish — manage per-project variables and secrets locally. Your AI uses them; it never sees them.",
-        "EnvFish — 案件ごとの環境変数と Secret をローカルで管理します。AI は使えても、中身は見られません。",
+        "EnvEnb — manage per-project variables and secrets locally. Your AI uses them; it never sees them.",
+        "EnvEnb — 案件ごとの環境変数と Secret をローカルで管理します。AI は使えても、中身は見られません。",
     ),
     help_template = help_template(),
     disable_help_subcommand = true,
     disable_help_flag = true,
     disable_version_flag = true,
     after_help = tr(
-        "Quick start:\n  envfish project add <name> --path <dir>\n  envfish use <name>\n  envfish env development --create\n  envfish var set APP_URL http://localhost:3000\n  printf '%s' \"$KEY\" | envfish var set-secret OPENAI_API_KEY\n\nLanguage: ENVFISH_LANG=ja|en (defaults to LANG).",
-        "クイックスタート:\n  envfish project add <名前> --path <ディレクトリ>\n  envfish use <名前>\n  envfish env development --create\n  envfish var set APP_URL http://localhost:3000\n  printf '%s' \"$KEY\" | envfish var set-secret OPENAI_API_KEY\n\n表示言語: ENVFISH_LANG=ja|en (既定は LANG に従います)。",
+        "Quick start:\n  envenb project add <name> --path <dir>\n  envenb use <name>\n  envenb env development --create\n  envenb var set APP_URL http://localhost:3000\n  printf '%s' \"$KEY\" | envenb var set-secret OPENAI_API_KEY\n\nLanguage: ENVENB_LANG=ja|en (defaults to LANG).",
+        "クイックスタート:\n  envenb project add <名前> --path <ディレクトリ>\n  envenb use <名前>\n  envenb env development --create\n  envenb var set APP_URL http://localhost:3000\n  printf '%s' \"$KEY\" | envenb var set-secret OPENAI_API_KEY\n\n表示言語: ENVENB_LANG=ja|en (既定は LANG に従います)。",
     ),
 )]
 pub struct Cli {
     #[arg(long, global = true, help = tr(
-        "Disable the goldfish animation (also: ENVFISH_NO_ANIMATION=1, CI=1, non-TTY)",
-        "金魚アニメーションを無効化 (ENVFISH_NO_ANIMATION=1、CI=1、非 TTY でも無効)",
+        "Disable the maiko animation (also: ENVENB_NO_ANIMATION=1, CI=1, non-TTY)",
+        "舞妓アニメーションを無効化 (ENVENB_NO_ANIMATION=1、CI=1、非 TTY でも無効)",
     ))]
     pub no_animation: bool,
 
@@ -106,13 +106,13 @@ pub enum Command {
     ), trailing_var_arg = true)]
     Run {
         #[arg(long, help = tr(
-            "Also expose credentials: ENVFISH_CRED_<NAME>_<FIELD> for account/database/ssh fields and ENVFISH_FILE_<NAME> paths for file credentials (0600 temp files, removed on exit)",
-            "資格情報も渡す: account/database/ssh は ENVFISH_CRED_<名前>_<フィールド>、file は ENVFISH_FILE_<名前> にパス (0600 の一時ファイル、終了時に削除)",
+            "Also expose credentials: ENVENB_CRED_<NAME>_<FIELD> for account/database/ssh fields and ENVENB_FILE_<NAME> paths for file credentials (0600 temp files, removed on exit)",
+            "資格情報も渡す: account/database/ssh は ENVENB_CRED_<名前>_<フィールド>、file は ENVENB_FILE_<名前> にパス (0600 の一時ファイル、終了時に削除)",
         ))]
         with_credentials: bool,
         #[arg(value_name = "COMMAND", required = true, num_args = 1.., help = tr(
-            "Command and arguments, e.g. `envfish run pnpm dev`",
-            "コマンドと引数。例: `envfish run pnpm dev`",
+            "Command and arguments, e.g. `envenb run pnpm dev`",
+            "コマンドと引数。例: `envenb run pnpm dev`",
         ))]
         command: Vec<String>,
     },
@@ -136,8 +136,8 @@ pub enum Command {
         delete: bool,
     },
     #[command(about = tr(
-        "Delete .env files in the project directory whose variables are all stored in EnvFish",
-        "全変数が EnvFish に保存済みの .env ファイルをプロジェクトディレクトリから削除",
+        "Delete .env files in the project directory whose variables are all stored in EnvEnb",
+        "全変数が EnvEnb に保存済みの .env ファイルをプロジェクトディレクトリから削除",
     ))]
     Clean {
         #[arg(value_name = "DIR", help = tr("Directory to scan (default: the project's local path, else .)", "対象ディレクトリ (既定: プロジェクトのローカルパス、無ければ .)"))]
@@ -148,8 +148,8 @@ pub enum Command {
         yes: bool,
     },
     #[command(about = tr(
-        "Write a real .env file (values included) for tools that cannot use `envfish run`. 0600, refused if git tracks the path",
-        "実値入りの .env を書き出す (`envfish run` が使えないツール向け)。0600 で作成し、git 追跡中のパスには書かない",
+        "Write a real .env file (values included) for tools that cannot use `envenb run`. 0600, refused if git tracks the path",
+        "実値入りの .env を書き出す (`envenb run` が使えないツール向け)。0600 で作成し、git 追跡中のパスには書かない",
     ))]
     ExportEnv {
         #[arg(value_name = "FILE", default_value = ".env.local")]

@@ -11,7 +11,7 @@ import "./index.css";
 if (import.meta.env.DEV) {
   const report = (kind: string, detail: unknown) => {
     const text = detail instanceof Error ? `${detail.message}` : String(detail);
-    void fetch("/__envfish_log", { method: "POST", body: `${kind}: ${text}` }).catch(() => {});
+    void fetch("/__envenb_log", { method: "POST", body: `${kind}: ${text}` }).catch(() => {});
   };
   window.addEventListener("error", (e) => report("error", e.error ?? e.message));
   window.addEventListener("unhandledrejection", (e) => report("unhandledrejection", e.reason));

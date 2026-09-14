@@ -10,7 +10,7 @@
   `Serialize`, `Clone` or `PartialEq`, and are zeroized on drop. Reading the
   content requires calling `expose()`, which is easy to grep for in review.
 - **No AI-reachable "get secret".** Decryption is `pub(crate)`; the sanctioned
-  consumers are `resolve_process_env` (for `envfish run`, human initiated), the
+  consumers are `resolve_process_env` (for `envenb run`, human initiated), the
   closure-based `with_secret` used by the Broker, and `with_credential_field`
   behind the human-only copy / ssh / run paths. Neither
   the Tauri commands, the MCP tools nor `AgentRequest` can return a value. The
@@ -19,7 +19,7 @@
 - **Permission decisions never read AI text.** The engine consults stored rules
   and environment names only. Defaults: development-like READ ALLOW / WRITE
   ASK / DELETE DENY; production-like READ ASK / WRITE DENY / DELETE DENY.
-  `ASK` requires a human click or `envfish ai approve`, with a 3-minute timeout.
+  `ASK` requires a human click or `envenb ai approve`, with a 3-minute timeout.
 - **Broker hygiene.** Credentials are marked sensitive in headers, scrubbed
   from response bodies and error messages, requests cannot leave the
   connection host, redirects are not followed, bodies are capped at 256 KiB.
@@ -32,17 +32,17 @@
 - **Logs and errors carry identifiers only.** `CoreError` / `VaultError`
   variants embed names and paths, never values; AEAD failures are reported as
   one opaque `Decrypt` error.
-- **Plaintext-emitting commands are human-only.** `envfish run`, `export-env`,
+- **Plaintext-emitting commands are human-only.** `envenb run`, `export-env`,
   `ssh` and `cred copy` require an interactive terminal and refuse to run inside
   known agent sessions (`CLAUDECODE`, Codex, Cursor, Gemini CLI markers). An AI
-  with shell access therefore cannot call `envfish run env` to dump the vault;
-  it gets the MCP broker instead. `ENVFISH_ALLOW_UNATTENDED=1` opts a script
+  with shell access therefore cannot call `envenb run env` to dump the vault;
+  it gets the MCP broker instead. `ENVENB_ALLOW_UNATTENDED=1` opts a script
   you run yourself back in. Metadata commands (`var list`, `status`, …) keep
   working for agents.
-- **Master key is separate from the database.** Copying `envfish.db` alone
+- **Master key is separate from the database.** Copying `envenb.db` alone
   yields nothing. New vaults on macOS default to the OS keychain
-  (`ENVFISH_KEY_BACKEND=file` overrides, and existing `master.key` files are kept);
-  elsewhere the default is a `0600` file and `envfish vault
+  (`ENVENB_KEY_BACKEND=file` overrides, and existing `master.key` files are kept);
+  elsewhere the default is a `0600` file and `envenb vault
   key-backend keychain` moves the key into the macOS Keychain / Windows
   Credential Manager / Linux Secret Service (read back before the file is
   deleted). Secrets need no re-encryption because the key bytes are unchanged.

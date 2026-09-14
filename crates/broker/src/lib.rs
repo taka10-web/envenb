@@ -1,14 +1,14 @@
-//! # envfish-broker
+//! # envenb-broker
 //!
 //! Performs HTTP calls against a [`Connection`] on behalf of a caller that must
 //! never see the credential. The broker:
 //!
-//! 1. resolves the connection's `auth_secret` through `EnvFish::with_secret`,
+//! 1. resolves the connection's `auth_secret` through `EnvEnb::with_secret`,
 //! 2. injects it per `auth_style` (`bearer`, `header:<Name>`, `query:<name>`, `supabase`, `none`),
 //! 3. sends the request with `reqwest`,
 //! 4. scrubs any occurrence of the credential from the response before returning it.
 //!
-//! Permission checks and audit logging are the caller's job (see `envfish-mcp`);
+//! Permission checks and audit logging are the caller's job (see `envenb-mcp`);
 //! the broker only knows how to make the call safely.
 
 pub mod sigv4;
@@ -16,7 +16,7 @@ pub mod sigv4;
 use std::sync::Arc;
 use std::time::Duration;
 
-use envfish_core::{Connection, ConnectionKind, EnvFish};
+use envenb_core::{Connection, ConnectionKind, EnvEnb};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
@@ -38,7 +38,7 @@ pub enum BrokerError {
     #[error("request failed: {0}")]
     Http(String),
     #[error(transparent)]
-    Core(#[from] envfish_core::CoreError),
+    Core(#[from] envenb_core::CoreError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,16 +74,16 @@ const FORBIDDEN_CALLER_HEADERS: [&str; 5] = [
 ];
 
 pub struct Broker {
-    core: Arc<EnvFish>,
+    core: Arc<EnvEnb>,
     client: reqwest::Client,
 }
 
 impl Broker {
-    pub fn new(core: Arc<EnvFish>) -> Self {
+    pub fn new(core: Arc<EnvEnb>) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .redirect(reqwest::redirect::Policy::none())
-            .user_agent(concat!("envfish-broker/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("envenb-broker/", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("reqwest client");
         Self { core, client }

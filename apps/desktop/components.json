@@ -11,7 +11,7 @@
   },
   "aliases": {
     "components": "@/components",
-    "utils": "@envfish/ui",
+    "utils": "@envenb/ui",
     "ui": "@/components/ui"
   }
 }

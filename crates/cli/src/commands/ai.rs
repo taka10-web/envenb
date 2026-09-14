@@ -1,4 +1,4 @@
-use envfish_core::{Action, ApprovalStatus, Decision, PermissionScope};
+use envenb_core::{Action, ApprovalStatus, Decision, PermissionScope};
 
 use crate::cli::AiCommand;
 use crate::commands::Ctx;
@@ -229,8 +229,8 @@ pub async fn run(ctx: &Ctx, command: AiCommand) -> anyhow::Result<()> {
                 println!(
                     "{}",
                     tr(
-                        "envfish ai approve <ID> | envfish ai deny <ID>",
-                        "envfish ai approve <ID> | envfish ai deny <ID>"
+                        "envenb ai approve <ID> | envenb ai deny <ID>",
+                        "envenb ai approve <ID> | envenb ai deny <ID>"
                     )
                 );
             }

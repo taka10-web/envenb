@@ -11,7 +11,7 @@ members = [
 ]
 # `cargo build` / `cargo test` at the root cover the Rust crates. The Tauri app
 # needs the built frontend (`pnpm build`) first, so it is built explicitly via
-# `pnpm desktop:build` or `cargo build -p envfish-desktop`.
+# `pnpm desktop:build` or `cargo build -p envenb-desktop`.
 default-members = [
     "crates/core",
     "crates/vault",
@@ -25,11 +25,11 @@ default-members = [
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/taka10-web/envfish"
+repository = "https://github.com/taka10-web/envenb"
 
 [workspace.dependencies]
-envfish-core = { path = "crates/core" }
-envfish-vault = { path = "crates/vault" }
+envenb-core = { path = "crates/core" }
+envenb-vault = { path = "crates/vault" }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-std", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
@@ -56,9 +56,9 @@ hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 arboard = { version = "3", default-features = false }
-envfish-broker = { path = "crates/broker" }
-envfish-mcp = { path = "crates/mcp" }
-envfish-daemon = { path = "crates/daemon" }
+envenb-broker = { path = "crates/broker" }
+envenb-mcp = { path = "crates/mcp" }
+envenb-daemon = { path = "crates/daemon" }
 
 [profile.release]
 strip = true

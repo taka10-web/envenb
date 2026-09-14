@@ -1,12 +1,12 @@
 [package]
-name = "envfish-core"
+name = "envenb-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "EnvFish core: domain models, SQLite persistence, and the application service layer."
+description = "EnvEnb core: domain models, SQLite persistence, and the application service layer."
 
 [dependencies]
-envfish-vault = { workspace = true }
+envenb-vault = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -23,7 +23,7 @@ arboard = { workspace = true, optional = true }
 
 [features]
 default = ["keychain"]
-keychain = ["envfish-vault/keychain"]
+keychain = ["envenb-vault/keychain"]
 clipboard = ["dep:arboard"]
 
 [dev-dependencies]

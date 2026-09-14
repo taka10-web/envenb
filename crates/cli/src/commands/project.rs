@@ -90,8 +90,8 @@ pub async fn use_project(ctx: &mut Ctx, project: &str) -> anyhow::Result<()> {
             "{} {}",
             tr("Environment:", "環境:"),
             tr(
-                "(none) — select one with `envfish env <name>`",
-                "(未選択) — `envfish env <名前>` で選択してください"
+                "(none) — select one with `envenb env <name>`",
+                "(未選択) — `envenb env <名前>` で選択してください"
             )
         );
     }

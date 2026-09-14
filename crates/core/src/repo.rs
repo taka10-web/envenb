@@ -1,7 +1,7 @@
 //! Thin SQLx queries. No business rules and no cryptography live here.
 
 use chrono::{DateTime, Utc};
-use envfish_vault::EncryptedSecret;
+use envenb_vault::EncryptedSecret;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{Row, SqlitePool};
 

@@ -1,18 +1,18 @@
 [package]
-name = "envfish-cli"
+name = "envenb-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "envfish command line interface."
+description = "envenb command line interface."
 
 [[bin]]
-name = "envfish"
+name = "envenb"
 path = "src/main.rs"
 
 [dependencies]
-envfish-core = { workspace = true, features = ["clipboard"] }
-envfish-mcp = { workspace = true }
-envfish-daemon = { workspace = true }
+envenb-core = { workspace = true, features = ["clipboard"] }
+envenb-mcp = { workspace = true }
+envenb-daemon = { workspace = true }
 tokio = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }

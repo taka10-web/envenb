@@ -1,11 +1,11 @@
-//! # envfish-vault
+//! # envenb-vault
 //!
-//! Secret encryption for EnvFish.
+//! Secret encryption for EnvEnb.
 //!
 //! Responsibilities are split in two:
 //!
 //! - [`MasterKeyProvider`]: *where* the 256-bit master key lives
-//!   (Phase 1: a `0600` file under the EnvFish data directory; later: OS keychains).
+//!   (Phase 1: a `0600` file under the EnvEnb data directory; later: OS keychains).
 //! - [`Vault`]: *how* secrets are sealed with that key (XChaCha20-Poly1305, AEAD).
 //!
 //! Nothing in this crate implements cryptography by hand; primitives come from the

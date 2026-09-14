@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Mirrors envfish-core models. Secret values never cross the IPC boundary:
+// Mirrors envenb-core models. Secret values never cross the IPC boundary:
 // `value` is null whenever `kind === "SECRET"`, and `auth_secret` on a
 // connection is the *name* of a secret variable, never its value.
 

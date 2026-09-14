@@ -1,7 +1,7 @@
 //! Human-only gate for commands that let plaintext leave the vault.
 //!
 //! The MCP surface never returns secrets, but an AI agent with shell access could
-//! simply run `envfish run env`. These commands therefore require an interactive
+//! simply run `envenb run env`. These commands therefore require an interactive
 //! terminal and refuse to run inside known agent sessions. A deliberate override
 //! exists for scripts the human sets up themselves.
 
@@ -9,7 +9,7 @@ use std::io::IsTerminal;
 
 use crate::i18n::tr;
 
-pub const OVERRIDE_ENV: &str = "ENVFISH_ALLOW_UNATTENDED";
+pub const OVERRIDE_ENV: &str = "ENVENB_ALLOW_UNATTENDED";
 
 /// Environment variables that coding agents set in the shells they spawn.
 const AGENT_MARKERS: [&str; 6] = [
@@ -38,12 +38,12 @@ pub fn require_human(what: &str) -> anyhow::Result<()> {
                 "AI エージェントのセッション内では実行できません"
             ),
             tr(
-                "Secrets are for humans and for `envfish run` started from a real terminal; agents use the MCP broker.",
-                "Secret は人間と、実際の端末から起動した `envfish run` のためのものです。AI エージェントは MCP の Broker を使ってください。"
+                "Secrets are for humans and for `envenb run` started from a real terminal; agents use the MCP broker.",
+                "Secret は人間と、実際の端末から起動した `envenb run` のためのものです。AI エージェントは MCP の Broker を使ってください。"
             )
         );
     }
-    if std::env::var_os(OVERRIDE_ENV).is_some_and(|v| v == "1") {
+    if envenb_core::env_compat::var("ALLOW_UNATTENDED").as_deref() == Some("1") {
         return Ok(());
     }
     if !std::io::stdin().is_terminal() {

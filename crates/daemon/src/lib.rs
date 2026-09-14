@@ -1,4 +1,4 @@
-//! # envfish-daemon
+//! # envenb-daemon
 //!
 //! The Local Agent: a small request/response server other local processes can
 //! talk to instead of opening the SQLite file themselves. Transport is a Unix
@@ -12,7 +12,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use envfish_core::{Action, Approval, AuditEntry, Connection, EnvFish, Environment, Project, Variable};
+use envenb_core::{Action, Approval, AuditEntry, Connection, EnvEnb, Environment, Project, Variable};
 use serde::{Deserialize, Serialize};
 
 /// Requests a client may send to the Local Agent.
@@ -62,22 +62,22 @@ pub enum AgentResponse {
     Approvals(Vec<Approval>),
     Approval(Approval),
     Audit(Vec<AuditEntry>),
-    Decision(envfish_core::Decision),
+    Decision(envenb_core::Decision),
     Error { message: String },
 }
 
 /// In-process request handler shared by the socket server and tests.
 pub struct Agent {
-    core: Arc<EnvFish>,
+    core: Arc<EnvEnb>,
 }
 
 impl Agent {
-    pub fn new(core: Arc<EnvFish>) -> Self {
+    pub fn new(core: Arc<EnvEnb>) -> Self {
         Self { core }
     }
 
     pub async fn handle(&self, request: AgentRequest) -> AgentResponse {
-        let result: envfish_core::Result<AgentResponse> = match request {
+        let result: envenb_core::Result<AgentResponse> = match request {
             AgentRequest::Ping => Ok(AgentResponse::Pong {
                 version: env!("CARGO_PKG_VERSION").to_string(),
             }),
@@ -99,7 +99,7 @@ impl Agent {
                 .map(AgentResponse::Connections),
             AgentRequest::ListPendingApprovals => self
                 .core
-                .list_approvals(Some(envfish_core::ApprovalStatus::Pending), 100)
+                .list_approvals(Some(envenb_core::ApprovalStatus::Pending), 100)
                 .await
                 .map(AgentResponse::Approvals),
             AgentRequest::ResolveApproval { approval_id, approve } => self
@@ -117,7 +117,7 @@ impl Agent {
             } => self
                 .core
                 .decide(
-                    &envfish_core::PermissionScope {
+                    &envenb_core::PermissionScope {
                         client_id,
                         project_id,
                         environment_id,
@@ -134,7 +134,7 @@ impl Agent {
     }
 }
 
-/// Default socket path inside the EnvFish data directory. Unix socket paths are
+/// Default socket path inside the EnvEnb data directory. Unix socket paths are
 /// limited to ~100 bytes, so very deep data directories fall back to the system
 /// temp dir with a short hash of the data dir in the name.
 pub fn socket_path(data_dir: &Path) -> PathBuf {
@@ -145,7 +145,7 @@ pub fn socket_path(data_dir: &Path) -> PathBuf {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     data_dir.hash(&mut h);
-    std::env::temp_dir().join(format!("envfish-{:016x}.sock", h.finish()))
+    std::env::temp_dir().join(format!("envenb-{:016x}.sock", h.finish()))
 }
 
 #[cfg(unix)]
@@ -225,10 +225,10 @@ pub mod uds {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use envfish_core::vault::InMemoryMasterKeyProvider;
+    use envenb_core::vault::InMemoryMasterKeyProvider;
 
-    async fn core() -> Arc<EnvFish> {
-        let core = EnvFish::open_in_memory(&InMemoryMasterKeyProvider::random())
+    async fn core() -> Arc<EnvEnb> {
+        let core = EnvEnb::open_in_memory(&InMemoryMasterKeyProvider::random())
             .await
             .unwrap();
         core.create_project("my-app", None).await.unwrap();

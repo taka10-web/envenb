@@ -1,5 +1,5 @@
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
-import { cn } from "@envfish/ui";
+import { cn } from "@envenb/ui";
 
 // Dense list/table building blocks: 40px rows, hairline dividers, hover tint,
 // and row actions that appear on hover but stay reachable by keyboard.

@@ -1,19 +1,19 @@
 [package]
-name = "envfish-desktop"
+name = "envenb-desktop"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "EnvFish desktop app (Tauri 2)."
+description = "EnvEnb desktop app (Tauri 2)."
 
 [lib]
-name = "envfish_desktop_lib"
+name = "envenb_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-envfish-core = { workspace = true, features = ["clipboard"] }
+envenb-core = { workspace = true, features = ["clipboard"] }
 tauri = { version = "2", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }

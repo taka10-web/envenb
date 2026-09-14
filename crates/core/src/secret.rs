@@ -1,6 +1,6 @@
 use std::fmt;
 
-use envfish_vault::{ExposeSecret, SecretString};
+use envenb_vault::{ExposeSecret, SecretString};
 
 /// A plaintext secret value while it is in memory.
 ///

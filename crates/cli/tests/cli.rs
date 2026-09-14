@@ -1,16 +1,16 @@
-//! End-to-end checks of the `envfish` binary against an isolated data directory.
+//! End-to-end checks of the `envenb` binary against an isolated data directory.
 
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-fn envfish(home: &Path) -> Command {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_envfish"));
-    cmd.env("ENVFISH_HOME", home)
+fn envenb(home: &Path) -> Command {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_envenb"));
+    cmd.env("ENVENB_HOME", home)
         .env("CI", "1")
-        .env("ENVFISH_LANG", "en")
-        .env("ENVFISH_KEY_BACKEND", "file")
-        .env("ENVFISH_ALLOW_UNATTENDED", "1")
+        .env("ENVENB_LANG", "en")
+        .env("ENVENB_KEY_BACKEND", "file")
+        .env("ENVENB_ALLOW_UNATTENDED", "1")
         .env_remove("RUST_LOG");
     // The test suite itself may run inside an agent session; the harness must
     // look like a plain shell so the human gate is exercised deliberately.
@@ -28,7 +28,7 @@ fn envfish(home: &Path) -> Command {
 }
 
 fn run(home: &Path, args: &[&str]) -> (bool, String, String) {
-    let out = envfish(home).args(args).output().expect("spawn envfish");
+    let out = envenb(home).args(args).output().expect("spawn envenb");
     (
         out.status.success(),
         String::from_utf8_lossy(&out.stdout).into_owned(),
@@ -45,9 +45,9 @@ fn project_add_and_list() {
     assert!(ok, "stderr: {err}");
     assert!(out.contains("Registered project my-app"));
 
-    let (ok, out, _) = run(home, &["project", "add", "Goldfish App"]);
+    let (ok, out, _) = run(home, &["project", "add", "Second App"]);
     assert!(ok);
-    assert!(out.contains("Goldfish App"));
+    assert!(out.contains("Second App"));
 
     let (ok, _, err) = run(home, &["project", "add", "my-app"]);
     assert!(!ok, "duplicate name must fail");
@@ -55,7 +55,7 @@ fn project_add_and_list() {
 
     let (ok, out, _) = run(home, &["project", "list"]);
     assert!(ok);
-    assert!(out.contains("my-app") && out.contains("Goldfish App"));
+    assert!(out.contains("my-app") && out.contains("Second App"));
     assert!(out.contains("/tmp/my-app"));
 
     let (ok, out, _) = run(home, &["project", "list", "--json"]);
@@ -82,7 +82,7 @@ fn status_use_env_and_variables() {
 
     // Secret comes in via stdin, never argv.
     let needle = "sk-live-INTEGRATION-NEEDLE";
-    let mut child = envfish(home)
+    let mut child = envenb(home)
         .args(["var", "set-secret", "OPENAI_API_KEY"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -129,14 +129,18 @@ fn no_animation_and_non_tty_output_is_plain() {
     let (ok, out, _) = run(home, &["--no-animation", "status"]);
     assert!(ok);
     assert!(!out.contains('\u{1b}'), "no ANSI escapes when piped");
-    assert!(!out.contains("><(((°>"), "no fish when piped");
+    // The maiko is drawn with half-block characters; none may reach a pipe.
+    assert!(
+        !out.contains('\u{2580}') && !out.contains('\u{2584}') && !out.contains('\u{2588}'),
+        "no sprite when piped"
+    );
 }
 
 #[test]
 fn japanese_help_and_messages() {
     let dir = tempfile::tempdir().unwrap();
-    let out = envfish(dir.path())
-        .env("ENVFISH_LANG", "ja")
+    let out = envenb(dir.path())
+        .env("ENVENB_LANG", "ja")
         .arg("--help")
         .output()
         .unwrap();
@@ -145,12 +149,12 @@ fn japanese_help_and_messages() {
     assert!(text.contains("使い方:") && text.contains("コマンド:") && text.contains("ヘルプを表示"));
 
     // No subcommand: usage on stdout, exit 0.
-    let out = envfish(dir.path()).env("ENVFISH_LANG", "ja").output().unwrap();
+    let out = envenb(dir.path()).env("ENVENB_LANG", "ja").output().unwrap();
     assert!(out.status.success());
     assert!(String::from_utf8_lossy(&out.stdout).contains("クイックスタート"));
 
-    let out = envfish(dir.path())
-        .env("ENVFISH_LANG", "ja")
+    let out = envenb(dir.path())
+        .env("ENVENB_LANG", "ja")
         .args(["use", "nope"])
         .output()
         .unwrap();
@@ -168,7 +172,7 @@ fn phase2_connections_permissions_import_run() {
     assert!(run(home, &["env", "development"]).0);
 
     // Secret via stdin, then a connection referencing it by name.
-    let mut child = envfish(home)
+    let mut child = envenb(home)
         .args(["var", "set-secret", "SUPABASE_KEY"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -300,7 +304,7 @@ fn phase2_connections_permissions_import_run() {
             "run",
             "sh",
             "-c",
-            "printf '%s|%s' \"$STRIPE_SECRET_KEY\" \"$ENVFISH_ENVIRONMENT\"",
+            "printf '%s|%s' \"$STRIPE_SECRET_KEY\" \"$ENVENB_ENVIRONMENT\"",
         ],
     );
     assert!(ok, "{err}");
@@ -330,7 +334,7 @@ fn mcp_stdio_handshake_and_no_secret_tools() {
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path();
     assert!(run(home, &["project", "add", "P"]).0);
-    let mut child = envfish(home)
+    let mut child = envenb(home)
         .args(["mcp", "--client", "test-client"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -349,7 +353,7 @@ fn mcp_stdio_handshake_and_no_secret_tools() {
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), 2);
     let init: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
-    assert_eq!(init["result"]["serverInfo"]["name"], "envfish");
+    assert_eq!(init["result"]["serverInfo"]["name"], "envenb");
     let tools: serde_json::Value = serde_json::from_str(lines[1]).unwrap();
     let names: Vec<String> = tools["result"]["tools"]
         .as_array()
@@ -449,7 +453,7 @@ fn credentials_store_copy_guard_and_run_injection() {
             "--",
             "sh",
             "-c",
-            "printf '%s|%s' \"$ENVFISH_CRED_QA_ADMIN_USERNAME\" \"$ENVFISH_CRED_BASTION_HOST\"",
+            "printf '%s|%s' \"$ENVENB_CRED_QA_ADMIN_USERNAME\" \"$ENVENB_CRED_BASTION_HOST\"",
         ],
     );
     assert!(ok, "{err}");
@@ -477,7 +481,7 @@ fn export_env_writes_real_values_with_guard_rails() {
     assert!(run(home, &["project", "add", "my-app"]).0);
     assert!(run(home, &["env", "development", "--create"]).0);
     assert!(run(home, &["var", "set", "APP_URL", "http://localhost:3000"]).0);
-    let mut child = envfish(home)
+    let mut child = envenb(home)
         .args(["var", "set-secret", "API_KEY"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -556,8 +560,8 @@ fn plaintext_commands_refuse_agents_and_non_terminals() {
     assert!(run(home, &["var", "set", "APP_URL", "http://x"]).0);
 
     // No terminal and no override → refused.
-    let out = envfish(home)
-        .env_remove("ENVFISH_ALLOW_UNATTENDED")
+    let out = envenb(home)
+        .env_remove("ENVENB_ALLOW_UNATTENDED")
         .args(["run", "sh", "-c", "echo $APP_URL"])
         .output()
         .unwrap();
@@ -565,7 +569,7 @@ fn plaintext_commands_refuse_agents_and_non_terminals() {
     assert!(String::from_utf8_lossy(&out.stderr).contains("interactive terminal"));
 
     // Inside a Claude Code session → refused even with the override absent/present.
-    let out = envfish(home)
+    let out = envenb(home)
         .env("CLAUDECODE", "1")
         .args(["run", "sh", "-c", "echo $APP_URL"])
         .output()
@@ -574,15 +578,15 @@ fn plaintext_commands_refuse_agents_and_non_terminals() {
     assert!(String::from_utf8_lossy(&out.stderr).contains("AI agent session"));
 
     // Metadata commands keep working for agents.
-    let out = envfish(home)
+    let out = envenb(home)
         .env("CLAUDECODE", "1")
         .args(["var", "list", "--json"])
         .output()
         .unwrap();
     assert!(out.status.success());
     assert!(String::from_utf8_lossy(&out.stdout).contains("APP_URL"));
-    let out = envfish(home)
-        .env_remove("ENVFISH_ALLOW_UNATTENDED")
+    let out = envenb(home)
+        .env_remove("ENVENB_ALLOW_UNATTENDED")
         .args(["export-env", home.join("x.env").to_str().unwrap()])
         .output()
         .unwrap();
@@ -599,7 +603,7 @@ fn selection_errors_name_the_next_command() {
     let (ok, _, err) = run(home, &["import", ".env"]);
     assert!(!ok);
     assert!(
-        err.contains("no projects yet") && err.contains("envfish project add"),
+        err.contains("no projects yet") && err.contains("envenb project add"),
         "{err}"
     );
 
@@ -615,7 +619,7 @@ fn selection_errors_name_the_next_command() {
     let (ok, _, err) = run(home, &["import", ".env"]);
     assert!(!ok);
     assert!(
-        err.contains("no project selected") && err.contains("envfish use my-app"),
+        err.contains("no project selected") && err.contains("envenb use my-app"),
         "{err}"
     );
     assert!(err.contains("my-app, other"), "lists what is available: {err}");
@@ -634,4 +638,85 @@ fn current_project_id(home: &Path) -> String {
     let (_, out, _) = run(home, &["project", "list", "--json"]);
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     v[0]["id"].as_str().unwrap().to_string()
+}
+
+// --- EnvFish -> EnvEnb rename compatibility -------------------------------
+//
+// A vault created before the rename must keep working untouched: the old
+// `ENVFISH_*` environment variables are still honoured, and a database still
+// named `envfish.db` is opened in place rather than shadowed by a blank one.
+
+/// Like `envenb()` but with every `ENVENB_*` setting expressed under the old
+/// `ENVFISH_*` prefix, as an existing user's shell profile would have it.
+fn envenb_legacy_env(home: &Path) -> Command {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_envenb"));
+    cmd.env("ENVFISH_HOME", home)
+        .env("CI", "1")
+        .env("ENVFISH_LANG", "en")
+        .env("ENVFISH_KEY_BACKEND", "file")
+        .env("ENVFISH_ALLOW_UNATTENDED", "1")
+        .env_remove("RUST_LOG");
+    for marker in [
+        "CLAUDECODE",
+        "CLAUDE_CODE_ENTRYPOINT",
+        "CODEX_SANDBOX",
+        "CODEX_CI",
+        "CURSOR_AGENT",
+        "GEMINI_CLI",
+    ] {
+        cmd.env_remove(marker);
+    }
+    cmd
+}
+
+#[test]
+fn the_old_environment_variable_names_still_work() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    let out = envenb_legacy_env(home)
+        .args(["project", "add", "my-app", "--path", home.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "ENVFISH_HOME should still be honoured: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let out = envenb_legacy_env(home)
+        .args(["project", "list"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("my-app"), "vault not reopened: {stdout}");
+}
+
+#[test]
+fn a_vault_whose_database_kept_the_old_filename_is_opened_in_place() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    // Create a vault, then put its database back under the pre-rename name,
+    // exactly as an upgraded installation would find it.
+    let (ok, _, err) = run(home, &["project", "add", "my-app", "--path", home.to_str().unwrap()]);
+    assert!(ok, "setup failed: {err}");
+    for suffix in ["", "-wal", "-shm"] {
+        let new = home.join(format!("envenb.db{suffix}"));
+        if new.exists() {
+            std::fs::rename(&new, home.join(format!("envfish.db{suffix}"))).unwrap();
+        }
+    }
+    assert!(!home.join("envenb.db").exists());
+
+    let (ok, stdout, err) = run(home, &["project", "list"]);
+    assert!(ok, "reopen failed: {err}");
+    assert!(
+        stdout.contains("my-app"),
+        "the pre-rename database was shadowed instead of reused: {stdout}"
+    );
+    assert!(
+        !home.join("envenb.db").exists(),
+        "a blank database was created alongside the real one"
+    );
 }

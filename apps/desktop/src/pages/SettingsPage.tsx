@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Monitor, Moon, Sun } from "lucide-react";
-import { GoldfishLoader } from "@envfish/ui";
+import { MaikoLoader } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import { PageHeader } from "../components/PageHeader";
 import { ErrorNote } from "../components/ErrorNote";
@@ -63,7 +63,7 @@ export function SettingsPage() {
         <SectionLabel>{t("settings.vault.title")}</SectionLabel>
         {status.error && <ErrorNote error={status.error} />}
         {settings.error && <ErrorNote error={settings.error} />}
-        {status.isLoading && <GoldfishLoader label={t("common.loading")} className="py-6" />}
+        {status.isLoading && <MaikoLoader label={t("common.loading")} className="py-6" />}
         {status.data &&
           vault.map((r) => (
             <Row key={r.label} label={r.label}>
@@ -71,7 +71,7 @@ export function SettingsPage() {
             </Row>
           ))}
         <p className="mt-4 font-mono text-[11px] text-muted-foreground">
-          {t("settings.vault.keychainNote")} <code className="rounded bg-muted px-1 py-0.5 text-foreground">envfish vault key-backend keychain</code>
+          {t("settings.vault.keychainNote")} <code className="rounded bg-muted px-1 py-0.5 text-foreground">envenb vault key-backend keychain</code>
         </p>
       </section>
     </div>

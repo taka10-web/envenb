@@ -1,4 +1,4 @@
-# EnvFish 使い方ガイド
+# EnvEnb 使い方ガイド
 
 案件ごとの環境変数・Secret・認証情報を **完全ローカル** で管理し、Claude Code などの
 AI エージェントには中身を見せずに使わせるためのツールです。
@@ -26,10 +26,10 @@ Desktop アプリも使う場合は [Tauri 2 の前提ツール](https://v2.taur
 (macOS なら Xcode Command Line Tools)。
 
 ```bash
-git clone <このリポジトリ> envfish && cd envfish
+git clone <このリポジトリ> envenb && cd envenb
 pnpm install                                # Desktop アプリの依存関係
-cargo install --path crates/cli --locked    # envfish コマンドを ~/.cargo/bin へ
-envfish --version
+cargo install --path crates/cli --locked    # envenb コマンドを ~/.cargo/bin へ
+envenb --version
 ```
 
 `command not found` になる場合は `~/.cargo/bin` が PATH にありません。`~/.zshrc` に
@@ -38,20 +38,20 @@ envfish --version
 
 ### 2. 案件と環境を用意する
 
-EnvFish は **プロジェクト → 環境 → 変数** の 3 階層です。
+EnvEnb は **プロジェクト → 環境 → 変数** の 3 階層です。
 まずプロジェクトと環境を選ばないと、変数の操作はできません。
 
 ```bash
-envfish project add my-app --path ~/works/my-app   # 登録 (最初の 1 件は自動で選択されます)
-envfish use my-app                                 # 以降の操作対象にする
-envfish env development --create                   # 環境を作って選択
-envfish status                                     # 今どこを触っているかの確認
+envenb project add my-app --path ~/works/my-app   # 登録 (最初の 1 件は自動で選択されます)
+envenb use my-app                                 # 以降の操作対象にする
+envenb env development --create                   # 環境を作って選択
+envenb status                                     # 今どこを触っているかの確認
 ```
 
 ### 3. 既存の .env を取り込む
 
 ```bash
-envfish import .env.local
+envenb import .env.local
 ```
 
 変数ごとに PUBLIC (AI に見えてよい設定値) か SECRET (鍵・トークン) かを聞かれます。
@@ -60,14 +60,14 @@ Enter を押すと提案どおりです。取り込んだファイルは自動�
 ### 4. アプリを起動する
 
 ```bash
-envfish run pnpm dev
+envenb run pnpm dev
 ```
 
 値は **子プロセスの環境変数にだけ** 渡ります。`.env.local` はもう不要なので削除できます。
 
 ```bash
-envfish import .env.local --delete   # 取り込みと同時に (確認あり)
-envfish clean                        # あとからまとめて
+envenb import .env.local --delete   # 取り込みと同時に (確認あり)
+envenb clean                        # あとからまとめて
 ```
 
 ファイル内のすべての変数が保存済みのときだけ削除され、`.env.example` には触れません。
@@ -81,9 +81,9 @@ envfish clean                        # あとからまとめて
 PUBLIC は引数で、SECRET は **標準入力** で渡します (シェル履歴や `ps` に残さないため)。
 
 ```bash
-envfish var set APP_URL http://localhost:3000     # PUBLIC
-envfish var set-secret OPENAI_API_KEY             # 対話入力、画面には出ません
-op read "op://Dev/OpenAI/credential" | envfish var set-secret OPENAI_API_KEY   # パイプでも可
+envenb var set APP_URL http://localhost:3000     # PUBLIC
+envenb var set-secret OPENAI_API_KEY             # 対話入力、画面には出ません
+op read "op://Dev/OpenAI/credential" | envenb var set-secret OPENAI_API_KEY   # パイプでも可
 ```
 
 変数名は `[A-Za-z_][A-Za-z0-9_]*` です。
@@ -91,18 +91,18 @@ op read "op://Dev/OpenAI/credential" | envfish var set-secret OPENAI_API_KEY   #
 ### 種別をあとから変える
 
 ```bash
-envfish var kind API_TOKEN SECRET    # PUBLIC の値をそのまま暗号化
+envenb var kind API_TOKEN SECRET    # PUBLIC の値をそのまま暗号化
 ```
 
 Desktop では一覧の `PUBLIC` バッジを押すと同じことができます。
 
 **SECRET → PUBLIC はできません。** 暗号化した値を AI が読める平文の列に戻すことになるためです。
-秘密でなかった場合は `envfish var remove` してから入れ直してください。
+秘密でなかった場合は `envenb var remove` してから入れ直してください。
 
 ### 中身を確認する
 
 ```bash
-envfish var list
+envenb var list
 ```
 
 ```text
@@ -119,28 +119,28 @@ SECRET の値を表示するコマンドは **ありません**。これは仕�
 ### 環境を切り替える
 
 ```bash
-envfish env                        # 一覧
-envfish env staging --create       # 作って選択
-envfish env production             # 切り替え
+envenb env                        # 一覧
+envenb env staging --create       # 作って選択
+envenb env production             # 切り替え
 ```
 
-`envfish use` でプロジェクトを変えると、環境の選択は解除されます。
+`envenb use` でプロジェクトを変えると、環境の選択は解除されます。
 
 ### 環境ごとに値を出し分ける
 
-同じ変数名を環境ごとに登録しておけば、`envfish env` を切り替えるだけで
-`envfish run` に渡る値が変わります。
+同じ変数名を環境ごとに登録しておけば、`envenb env` を切り替えるだけで
+`envenb run` に渡る値が変わります。
 
 ```bash
-envfish env production
-envfish var set-secret OPENAI_API_KEY   # 本番用の値
+envenb env production
+envenb var set-secret OPENAI_API_KEY   # 本番用の値
 ```
 
 ### `.env.example` を作る / 実値のファイルが必要なとき
 
 ```bash
-envfish export-example                 # SECRET は空欄のテンプレート (コミット可)
-envfish export-env .env.local          # 実値入り。0600 で作成し .gitignore に追記
+envenb export-example                 # SECRET は空欄のテンプレート (コミット可)
+envenb export-env .env.local          # 実値入り。0600 で作成し .gitignore に追記
 ```
 
 `export-env` は、ファイルしか読めないツールのための逃げ道です。平文が作業ディレクトリに
@@ -158,28 +158,28 @@ envfish export-env .env.local          # 実値入り。0600 で作成し .gitig
 | `file` | filename*, **content*** |
 
 ```bash
-envfish cred add qa-admin --kind account --field url=https://staging.example.com/login
+envenb cred add qa-admin --kind account --field url=https://staging.example.com/login
 #   username / password / totp_secret は非表示で対話入力されます
-envfish cred add bastion --kind ssh --field host=bastion.example.com --field user=deploy \
+envenb cred add bastion --kind ssh --field host=bastion.example.com --field user=deploy \
   --field private_key=@~/.ssh/id_bastion
-envfish cred add ca-cert --kind file --field filename=ca.pem --field content=@./ca.pem
-envfish cred list
+envenb cred add ca-cert --kind file --field filename=ca.pem --field content=@./ca.pem
+envenb cred list
 ```
 
 使うときは、値を画面に出さずに渡します。
 
 ```bash
-envfish cred copy qa-admin --field password   # クリップボードへ。30 秒後に自動消去
-envfish cred copy qa-admin --field totp       # 現在のワンタイムコード
-envfish ssh bastion -- uptime                 # 鍵は 0600 の一時ファイル、終了時に削除
-envfish run --with-credentials -- sqlplus ... # ENVFISH_CRED_<名前>_<フィールド> で渡る
+envenb cred copy qa-admin --field password   # クリップボードへ。30 秒後に自動消去
+envenb cred copy qa-admin --field totp       # 現在のワンタイムコード
+envenb ssh bastion -- uptime                 # 鍵は 0600 の一時ファイル、終了時に削除
+envenb run --with-credentials -- sqlplus ... # ENVENB_CRED_<名前>_<フィールド> で渡る
 ```
 
 ### 漏えいを検査する
 
 ```bash
-envfish scan                       # カレントディレクトリ
-envfish scan ~/works/my-app --all-environments
+envenb scan                       # カレントディレクトリ
+envenb scan ~/works/my-app --all-environments
 ```
 
 保存済み Secret の値がファイルに現れていないか、`.env` が git に追跡されていないかを調べます。
@@ -189,8 +189,8 @@ pre-commit フックや CI に組み込めます。
 ### マスターキーを OS のキーチェーンに移す
 
 ```bash
-envfish vault status
-envfish vault key-backend keychain   # macOS Keychain / Windows 資格情報 / Linux Secret Service
+envenb vault status
+envenb vault key-backend keychain   # macOS Keychain / Windows 資格情報 / Linux Secret Service
 ```
 
 鍵を書き込んで読み戻せることを確認してから元を削除します。Secret の再暗号化は不要です。
@@ -198,18 +198,18 @@ envfish vault key-backend keychain   # macOS Keychain / Windows 資格情報 / L
 ### 表示を変える
 
 ```bash
-envfish config language ja      # ja | en | system
-envfish config theme dark       # light | dark | system (Desktop と共通)
+envenb config language ja      # ja | en | system
+envenb config theme dark       # light | dark | system (Desktop と共通)
 ```
 
-金魚のアニメーションは `--no-animation`、`ENVFISH_NO_ANIMATION=1`、`NO_COLOR=1` で抑えられます。
+舞妓のアニメーションは `--no-animation`、`ENVENB_NO_ANIMATION=1`、`NO_COLOR=1` で抑えられます。
 CI・パイプ・`--json` のときは自動で出ません。
 
 ### スクリプトから使う
 
 ```bash
-envfish project list --json | jq '.[].name'
-envfish var list --json | jq '.[] | select(.kind == "SECRET") | .name'
+envenb project list --json | jq '.[].name'
+envenb var list --json | jq '.[] | select(.kind == "SECRET") | .name'
 ```
 
 `--json` でも SECRET の `value` は常に `null` です。
@@ -223,10 +223,10 @@ envfish var list --json | jq '.[] | select(.kind == "SECRET") | .name'
 認証情報は先に SECRET として登録し、接続には **その名前** を渡します (値は渡しません)。
 
 ```bash
-printf '%s' "$SUPABASE_SERVICE_KEY" | envfish var set-secret SUPABASE_KEY
-envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY
-envfish connection add openai --kind openai --secret OPENAI_API_KEY      # URL は既定値
-envfish connection list
+printf '%s' "$SUPABASE_SERVICE_KEY" | envenb var set-secret SUPABASE_KEY
+envenb connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY
+envenb connection add openai --kind openai --secret OPENAI_API_KEY      # URL は既定値
+envenb connection list
 ```
 
 | kind | 既定 URL | 認証 |
@@ -242,7 +242,7 @@ envfish connection list
 AWS は署名に追加情報が要ります。
 
 ```bash
-envfish connection add sqs --kind aws --url https://sqs.ap-northeast-1.amazonaws.com \
+envenb connection add sqs --kind aws --url https://sqs.ap-northeast-1.amazonaws.com \
   --secret AWS_SECRET_ACCESS_KEY --meta region=ap-northeast-1 --meta service=sqs \
   --meta access_key_id_secret=AWS_ACCESS_KEY_ID
 ```
@@ -250,7 +250,7 @@ envfish connection add sqs --kind aws --url https://sqs.ap-northeast-1.amazonaws
 ### 2. Claude Code に登録する
 
 ```bash
-claude mcp add envfish -- envfish mcp --client claude-code
+claude mcp add envenb -- envenb mcp --client claude-code
 ```
 
 Codex など別のツールは `--client codex` のように名前を変えると、権限と監査ログが分かれます。
@@ -266,7 +266,7 @@ AI に見えるツールは次の 6 つです。**Secret を返すものはあ�
 | `list_projects` / `list_environments` / `list_connections` | 一覧 (認証情報は名前と状態のみ) |
 | `list_variables` | PUBLIC は値付き、SECRET は名前のみ |
 | `list_credentials` | 名前と非秘密フィールド (host, url など) のみ |
-| `call_service` | 接続経由で HTTP を実行。EnvFish が認証を付け、レスポンスから認証情報を除去して返す |
+| `call_service` | 接続経由で HTTP を実行。EnvEnb が認証を付け、レスポンスから認証情報を除去して返す |
 | `supabase_select` | `GET /rest/v1/<table>` の簡易版 |
 
 ### 3. 許す操作を決める
@@ -280,17 +280,17 @@ AI に見えるツールは次の 6 つです。**Secret を返すものはあ�
 | production / prod / live | ASK | DENY | DENY |
 
 ```bash
-envfish ai check --client claude-code --connection supabase        # 実効判定を確認
-envfish ai permit WRITE ALLOW --client claude-code --connection supabase
-envfish ai rules                                                   # 明示ルールの一覧
+envenb ai check --client claude-code --connection supabase        # 実効判定を確認
+envenb ai permit WRITE ALLOW --client claude-code --connection supabase
+envenb ai rules                                                   # 明示ルールの一覧
 ```
 
 ASK になった要求は人間が判断します (3 分で期限切れ)。
 
 ```bash
-envfish ai approvals          # 保留中の一覧
-envfish ai approve <ID先頭8桁>
-envfish activity              # 監査ログ: 誰が・どこに・何を・結果
+envenb ai approvals          # 保留中の一覧
+envenb ai approve <ID先頭8桁>
+envenb activity              # 監査ログ: 誰が・どこに・何を・結果
 ```
 
 Desktop の「AI アクセス」画面でも同じ承認ができ、2 秒ごとに更新されます。
@@ -305,7 +305,7 @@ pnpm desktop:build   # 配布用バンドル
 ```
 
 > debug ビルドのバイナリは Vite 開発サーバー (port 1420) を読むため、単体起動では白い画面になります。
-> 必ず `pnpm dev` を使ってください。インスペクタは `ENVFISH_DEVTOOLS=1 pnpm dev` で開きます。
+> 必ず `pnpm dev` を使ってください。インスペクタは `ENVENB_DEVTOOLS=1 pnpm dev` で開きます。
 
 CLI と同じデータを読み書きするので、どちらで登録しても双方に反映されます。
 
@@ -326,7 +326,7 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 
 ## コマンド一覧
 
-引数なしの `envfish`、`envfish --help`、`envfish <コマンド> --help` でも確認できます。
+引数なしの `envenb`、`envenb --help`、`envenb <コマンド> --help` でも確認できます。
 
 | コマンド | 内容 |
 |---|---|
@@ -358,26 +358,26 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 
 ### データの置き場所
 
-すべて 1 つのディレクトリに入ります (`ENVFISH_HOME` で変更可)。
+すべて 1 つのディレクトリに入ります (`ENVENB_HOME` で変更可)。
 **絶対に git にコミットしないでください。**
 
 | OS | 場所 |
 |---|---|
-| macOS | `~/Library/Application Support/envfish/` |
-| Linux | `~/.local/share/envfish/` |
-| Windows | `%APPDATA%\envfish\` |
+| macOS | `~/Library/Application Support/envenb/` |
+| Linux | `~/.local/share/envenb/` |
+| Windows | `%APPDATA%\envenb\` |
 
 | ファイル | 内容 |
 |---|---|
-| `envfish.db` | SQLite。PUBLIC は平文、SECRET は暗号文と nonce のみ |
+| `envenb.db` | SQLite。PUBLIC は平文、SECRET は暗号文と nonce のみ |
 | `master.key` | 32 byte のマスターキー (`0600`)。DB と別に置くので、DB のコピーだけでは復号できません |
 | `state.json` | 選択中のプロジェクト / 環境の id |
 
 ### なぜ実値の `.env` を残さないのか
 
 Claude Code などの AI は作業ディレクトリのファイルを読みます。平文の `.env.local` が
-隣にあれば、Vault と Broker で分離した意味がありません。値は EnvFish に置き、
-アプリには `envfish run` で渡すのが基本形です。
+隣にあれば、Vault と Broker で分離した意味がありません。値は EnvEnb に置き、
+アプリには `envenb run` で渡すのが基本形です。
 
 ### Secret の扱い
 
@@ -392,15 +392,15 @@ Claude Code などの AI は作業ディレクトリのファイルを読みま�
 
 - 平文を出すコマンド (`run` / `export-env` / `ssh` / `cred copy`) は **人間専用** です。
   対話端末からのみ実行でき、`CLAUDECODE` などエージェントのセッション内では拒否されます。
-  自分で書いたスクリプトからは `ENVFISH_ALLOW_UNATTENDED=1` で許可できます。
+  自分で書いたスクリプトからは `ENVENB_ALLOW_UNATTENDED=1` で許可できます。
 - `var list` や `status` のようなメタデータだけのコマンドは AI からも使えます。
-- 「管理者が許可した」と AI が主張しても、判定に使うのは EnvFish のルールだけです。
+- 「管理者が許可した」と AI が主張しても、判定に使うのは EnvEnb のルールだけです。
 
 ### 運用の推奨
 
 - API キーやトークンは必ず SECRET に。`NEXT_PUBLIC_*` のようにブラウザへ出る値だけ PUBLIC に。
-- マスターキーは Keychain に置く (`envfish vault key-backend keychain`)。macOS の新規 Vault は既定でこちらです。
-- Vault を別マシンへ移すときは `envfish.db` と `master.key` を **別経路で** 運ぶ。
+- マスターキーは Keychain に置く (`envenb vault key-backend keychain`)。macOS の新規 Vault は既定でこちらです。
+- Vault を別マシンへ移すときは `envenb.db` と `master.key` を **別経路で** 運ぶ。
 
 ### まだできないこと
 
@@ -417,15 +417,15 @@ Claude Code などの AI は作業ディレクトリのファイルを読みま�
 
 | 症状 | 対処 |
 |---|---|
-| `envfish: command not found` | `~/.cargo/bin` が PATH にありません ([インストール](#1-インストール)) |
-| `no project selected` / `no environment selected` | エラーに次のコマンドと候補が出ます。`envfish use <名前>` → `envfish env <名前>` |
-| `no projects yet` | `envfish project add <名前> --path .` |
-| `a project with that name already exists` | 名前は大文字小文字を区別しません。`envfish project list` で確認 |
+| `envenb: command not found` | `~/.cargo/bin` が PATH にありません ([インストール](#1-インストール)) |
+| `no project selected` / `no environment selected` | エラーに次のコマンドと候補が出ます。`envenb use <名前>` → `envenb env <名前>` |
+| `no projects yet` | `envenb project add <名前> --path .` |
+| `a project with that name already exists` | 名前は大文字小文字を区別しません。`envenb project list` で確認 |
 | `secret could not be decrypted` | `master.key` が DB と対になっていません。両方を一緒に扱ってください |
 | 同上 + `vault status` が keychain | OS が Keychain アクセスを拒否した可能性。ダイアログで「常に許可」か `key-backend file` に戻す |
-| `permission denied` / `approval timed out` (AI 側) | `envfish ai check` で判定を確認。ASK なら `envfish ai approvals` → `approve` |
-| `connection has no credential configured` | `envfish connection add --secret <SECRET 名>` で認証情報を紐づける |
+| `permission denied` / `approval timed out` (AI 側) | `envenb ai check` で判定を確認。ASK なら `envenb ai approvals` → `approve` |
+| `connection has no credential configured` | `envenb connection add --secret <SECRET 名>` で認証情報を紐づける |
 | `refused inside an AI agent session` | 仕様です。平文を出すコマンドは人間のターミナルからのみ実行できます |
 | Desktop が白い画面 | `pnpm dev` で起動しているか確認 |
-| 金魚が出ない | TTY か、`CI` / `ENVFISH_NO_ANIMATION` / `--json` が無いか確認 |
-| 詳しいログを見たい | `envfish -v ...` または `RUST_LOG=envfish=debug` |
+| 舞妓が出ない | TTY か、`CI` / `ENVENB_NO_ANIMATION` / `--json` が無いか確認 |
+| 詳しいログを見たい | `envenb -v ...` または `RUST_LOG=envenb=debug` |

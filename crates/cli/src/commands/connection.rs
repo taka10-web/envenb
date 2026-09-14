@@ -1,4 +1,4 @@
-use envfish_core::{ConnectionKind, NewConnection};
+use envenb_core::{ConnectionKind, NewConnection};
 
 use crate::cli::ConnectionCommand;
 use crate::commands::Ctx;

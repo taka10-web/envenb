@@ -1,7 +1,7 @@
-//! # envfish-mcp
+//! # envenb-mcp
 //!
 //! A Model Context Protocol server over stdio (JSON-RPC 2.0, one message per line).
-//! Claude Code, Codex and other MCP clients spawn `envfish mcp --client <name>`.
+//! Claude Code, Codex and other MCP clients spawn `envenb mcp --client <name>`.
 //!
 //! Tools exposed (all metadata or brokered actions; **no tool returns a secret**):
 //!
@@ -15,14 +15,14 @@
 //! | `supabase_select`  | convenience wrapper: PostgREST `GET /rest/v1/<table>`     |
 //!
 //! Every brokered call goes through the Permission Engine. `ASK` blocks until a
-//! human approves in the desktop app or with `envfish ai approve`, or times out.
+//! human approves in the desktop app or with `envenb ai approve`, or times out.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use envfish_broker::{Broker, BrokerRequest};
-use envfish_core::{
-    Action, AiClient, ApprovalStatus, AuditRecord, Decision, EnvFish, PermissionScope, VariableKind,
+use envenb_broker::{Broker, BrokerRequest};
+use envenb_core::{
+    Action, AiClient, ApprovalStatus, AuditRecord, Decision, EnvEnb, PermissionScope, VariableKind,
 };
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -32,7 +32,7 @@ const APPROVAL_TIMEOUT: Duration = Duration::from_secs(180);
 const APPROVAL_POLL: Duration = Duration::from_millis(600);
 
 pub struct McpServer {
-    core: Arc<EnvFish>,
+    core: Arc<EnvEnb>,
     broker: Broker,
     client: AiClient,
 }
@@ -46,13 +46,13 @@ enum ToolError {
     #[error("approval timed out or was denied: {0}")]
     NotApproved(String),
     #[error(transparent)]
-    Core(#[from] envfish_core::CoreError),
+    Core(#[from] envenb_core::CoreError),
     #[error(transparent)]
-    Broker(#[from] envfish_broker::BrokerError),
+    Broker(#[from] envenb_broker::BrokerError),
 }
 
 impl McpServer {
-    pub async fn new(core: Arc<EnvFish>, client_name: &str, client_kind: &str) -> envfish_core::Result<Self> {
+    pub async fn new(core: Arc<EnvEnb>, client_name: &str, client_kind: &str) -> envenb_core::Result<Self> {
         let client = core.register_ai_client(client_name, client_kind).await?;
         let broker = Broker::new(core.clone());
         Ok(Self { core, broker, client })
@@ -98,8 +98,8 @@ impl McpServer {
             "initialize" => Ok(json!({
                 "protocolVersion": params.get("protocolVersion").and_then(|v| v.as_str()).unwrap_or(PROTOCOL_VERSION),
                 "capabilities": { "tools": { "listChanged": false } },
-                "serverInfo": { "name": "envfish", "version": env!("CARGO_PKG_VERSION") },
-                "instructions": "EnvFish brokers access to project secrets. You can list projects, environments, connections and PUBLIC variables, and call connected services through call_service. Secret values are never available; do not ask for them."
+                "serverInfo": { "name": "envenb", "version": env!("CARGO_PKG_VERSION") },
+                "instructions": "EnvEnb brokers access to project secrets. You can list projects, environments, connections and PUBLIC variables, and call connected services through call_service. Secret values are never available; do not ask for them."
             })),
             "notifications/initialized" | "notifications/cancelled" => return None,
             "ping" => Ok(json!({})),
@@ -218,7 +218,7 @@ impl McpServer {
 
     /// Resolve the project from `args`, or fall back to the only one that exists.
     /// Agents routinely reach for `list_environments` before they know a name.
-    async fn resolve_project_arg(&self, args: &Value) -> Result<envfish_core::Project, ToolError> {
+    async fn resolve_project_arg(&self, args: &Value) -> Result<envenb_core::Project, ToolError> {
         if let Some(name) = args
             .get("project")
             .and_then(|v| v.as_str())
@@ -230,7 +230,7 @@ impl McpServer {
         match projects.len() {
             1 => Ok(projects.remove(0)),
             0 => Err(ToolError::User(
-                "no projects exist yet; the user creates one with `envfish project add <name>`".into(),
+                "no projects exist yet; the user creates one with `envenb project add <name>`".into(),
             )),
             _ => {
                 let names: Vec<&str> = projects.iter().map(|p| p.name.as_str()).collect();
@@ -245,7 +245,7 @@ impl McpServer {
     async fn resolve_env(
         &self,
         args: &Value,
-    ) -> Result<(envfish_core::Project, envfish_core::Environment), ToolError> {
+    ) -> Result<(envenb_core::Project, envenb_core::Environment), ToolError> {
         let project = self.resolve_project_arg(args).await?;
         let env = self
             .core
@@ -284,7 +284,7 @@ impl McpServer {
             Decision::Deny => {
                 self.core.record_audit(audit("DENIED")).await?;
                 return Err(ToolError::Denied(format!(
-                    "{action} on {} / {} / {} is denied by EnvFish policy",
+                    "{action} on {} / {} / {} is denied by EnvEnb policy",
                     project.name, env.name, connection.name
                 )));
             }
@@ -396,7 +396,7 @@ pub fn tool_definitions() -> Vec<Value> {
     vec![
         json!({
             "name": "list_projects",
-            "description": "List EnvFish projects registered on this machine. Start here: other tools take a project name.",
+            "description": "List EnvEnb projects registered on this machine. Start here: other tools take a project name.",
             "inputSchema": { "type": "object", "properties": {} },
             "outputSchema": {
                 "type": "object",
@@ -459,7 +459,7 @@ pub fn tool_definitions() -> Vec<Value> {
         }),
         json!({
             "name": "call_service",
-            "description": "Call an external API through a connection. EnvFish injects the credential and returns the HTTP response. Subject to per-client permissions; WRITE/DELETE may require human approval.",
+            "description": "Call an external API through a connection. EnvEnb injects the credential and returns the HTTP response. Subject to per-client permissions; WRITE/DELETE may require human approval.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -469,7 +469,7 @@ pub fn tool_definitions() -> Vec<Value> {
                     "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"], "default": "GET" },
                     "path": { "type": "string", "description": "Path relative to the connection base URL, e.g. /models" },
                     "query": { "type": "object", "additionalProperties": { "type": "string" } },
-                    "headers": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Extra headers (auth headers are managed by EnvFish and rejected)" },
+                    "headers": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Extra headers (auth headers are managed by EnvEnb and rejected)" },
                     "body": { "description": "JSON body for POST/PUT/PATCH" }
                 },
                 "required": ["project", "environment", "connection", "path"]
@@ -498,11 +498,11 @@ pub fn tool_definitions() -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use envfish_core::vault::InMemoryMasterKeyProvider;
+    use envenb_core::vault::InMemoryMasterKeyProvider;
 
     async fn server() -> McpServer {
         let core = Arc::new(
-            EnvFish::open_in_memory(&InMemoryMasterKeyProvider::random())
+            EnvEnb::open_in_memory(&InMemoryMasterKeyProvider::random())
                 .await
                 .unwrap(),
         );
@@ -517,7 +517,7 @@ mod tests {
             .handle(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}))
             .await
             .unwrap();
-        assert_eq!(init["result"]["serverInfo"]["name"], "envfish");
+        assert_eq!(init["result"]["serverInfo"]["name"], "envenb");
         assert!(
             s.handle(json!({"jsonrpc":"2.0","method":"notifications/initialized"}))
                 .await
@@ -558,7 +558,7 @@ mod tests {
             .set_secret_variable(
                 &e.id,
                 "OPENAI_API_KEY",
-                envfish_core::SecretValue::new("sk-NEEDLE"),
+                envenb_core::SecretValue::new("sk-NEEDLE"),
             )
             .await
             .unwrap();
@@ -578,13 +578,13 @@ mod tests {
         let p = s.core.resolve_project("my-app").await.unwrap();
         let e = s.core.create_environment(&p.id, "production").await.unwrap();
         s.core
-            .set_secret_variable(&e.id, "KEY", envfish_core::SecretValue::new("k"))
+            .set_secret_variable(&e.id, "KEY", envenb_core::SecretValue::new("k"))
             .await
             .unwrap();
         s.core
-            .create_connection(envfish_core::NewConnection {
+            .create_connection(envenb_core::NewConnection {
                 environment_id: e.id.clone(),
-                kind: envfish_core::ConnectionKind::GenericHttp,
+                kind: envenb_core::ConnectionKind::GenericHttp,
                 name: "api".into(),
                 base_url: Some("https://192.0.2.1".into()),
                 auth_secret: Some("KEY".into()),

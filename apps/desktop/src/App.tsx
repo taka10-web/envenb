@@ -1,6 +1,6 @@
 import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { cn, Goldfish } from "@envfish/ui";
+import { cn, MaikoFace } from "@envenb/ui";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { VariablesPage } from "./pages/VariablesPage";
@@ -100,8 +100,8 @@ export default function App() {
           to="/variables"
           className="flex h-12 items-center gap-2 border-b border-border px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Goldfish variant="red" size={2} />
-          <span className="font-pixel text-base leading-none">EnvFish</span>
+          <MaikoFace way="black" size={1.25} />
+          <span className="font-pixel text-base leading-none">EnvEnb</span>
         </NavLink>
         <div className="border-b border-border pt-3">
           <ContextSwitcher />

@@ -1,13 +1,13 @@
 {
-  "name": "envfish",
+  "name": "envenb",
   "private": true,
   "version": "0.1.0",
   "description": "Local-first secrets for AI-assisted development. Your AI can use your secrets. Your AI never sees your secrets.",
   "scripts": {
-    "dev": "pnpm --filter @envfish/desktop tauri dev",
+    "dev": "pnpm --filter @envenb/desktop tauri dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "desktop:build": "pnpm --filter @envfish/desktop tauri build",
+    "desktop:build": "pnpm --filter @envenb/desktop tauri build",
     "test": "pnpm -r --if-present test"
   },
   "packageManager": "pnpm@11.11.0",

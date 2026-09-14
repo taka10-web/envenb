@@ -1,7 +1,7 @@
 use std::io::{IsTerminal, Read, Write};
 
 use anyhow::Context;
-use envfish_core::{SecretValue, VariableKind};
+use envenb_core::{SecretValue, VariableKind};
 
 use crate::cli::VarCommand;
 use crate::commands::Ctx;

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use envfish_daemon::{Agent, AgentRequest, AgentResponse, socket_path};
+use envenb_daemon::{Agent, AgentRequest, AgentResponse, socket_path};
 
 use crate::commands::Ctx;
 use crate::i18n::tr;
@@ -11,14 +11,14 @@ pub async fn run(ctx: Ctx, ping: bool) -> anyhow::Result<()> {
     #[cfg(unix)]
     {
         if ping {
-            let resp = envfish_daemon::uds::request(&path, &AgentRequest::Ping).await?;
+            let resp = envenb_daemon::uds::request(&path, &AgentRequest::Ping).await?;
             match resp {
                 AgentResponse::Pong { version } => {
                     if ctx.json {
                         println!("{}", serde_json::json!({ "pong": true, "version": version }));
                     } else {
                         println!(
-                            "{} envfish-agent {version} ({})",
+                            "{} envenb-agent {version} ({})",
                             tr("pong from", "応答あり:"),
                             path.display()
                         );
@@ -28,16 +28,16 @@ pub async fn run(ctx: Ctx, ping: bool) -> anyhow::Result<()> {
                 other => anyhow::bail!("unexpected response: {other:?}"),
             }
         } else {
-            let listener = envfish_daemon::uds::bind(&path)?;
+            let listener = envenb_daemon::uds::bind(&path)?;
             if !ctx.json {
                 eprintln!(
                     "{} {}",
-                    tr("EnvFish agent listening on", "EnvFish Agent を待ち受け中:"),
+                    tr("EnvEnb agent listening on", "EnvEnb Agent を待ち受け中:"),
                     path.display()
                 );
             }
             let agent = Arc::new(Agent::new(Arc::new(ctx.app)));
-            envfish_daemon::uds::serve(agent, listener).await?;
+            envenb_daemon::uds::serve(agent, listener).await?;
             Ok(())
         }
     }

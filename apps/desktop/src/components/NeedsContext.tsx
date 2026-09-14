@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Button, GoldfishLoader } from "@envfish/ui";
+import { Button, MaikoLoader } from "@envenb/ui";
 import { useAppContext } from "../lib/context";
 import { useI18n } from "../lib/i18n";
 import { EmptyState } from "./EmptyState";
@@ -35,7 +35,7 @@ export function NeedsEnvironment({ projectId }: { projectId: string }) {
 export function WithEnvironment({ children }: { children: (ctx: { projectId: string; environmentId: string }) => React.ReactNode }) {
   const { t } = useI18n();
   const { isLoading, projectId, environmentId } = useAppContext();
-  if (isLoading) return <GoldfishLoader label={t("common.loading")} className="py-16" />;
+  if (isLoading) return <MaikoLoader label={t("common.loading")} className="py-16" />;
   if (!projectId) return <NeedsProject />;
   if (!environmentId) return <NeedsEnvironment projectId={projectId} />;
   return <>{children({ projectId, environmentId })}</>;

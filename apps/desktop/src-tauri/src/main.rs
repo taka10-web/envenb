@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    envfish_desktop_lib::run()
+    envenb_desktop_lib::run()
 }

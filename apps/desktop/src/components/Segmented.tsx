@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@envfish/ui";
+import { cn } from "@envenb/ui";
 
 /**
  * A row of mutually exclusive buttons (the same look as the PUBLIC/SECRET

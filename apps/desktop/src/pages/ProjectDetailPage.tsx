@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, FileDown, Plus, Trash2 } from "lucide-react";
-import { Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
+import { Button, MaikoInline, MaikoLoader, Input } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import type { Project } from "../lib/types";
 import { ErrorNote } from "../components/ErrorNote";
@@ -33,7 +33,7 @@ export function ProjectDetailPage() {
     },
   });
 
-  if (projects.isLoading) return <GoldfishLoader label={t("common.loading")} className="py-24" />;
+  if (projects.isLoading) return <MaikoLoader label={t("common.loading")} className="py-24" />;
   if (!project) return <p className="text-sm text-muted-foreground">{t("projects.notFound")}</p>;
 
   return (
@@ -110,7 +110,7 @@ function Environments({ project }: { project: Project }) {
       >
         <Input aria-label={t("envs.placeholder")} placeholder={t("envs.placeholder")} value={name} onChange={(e) => setName(e.target.value)} className="h-8 w-56 font-mono text-xs" />
         <Button type="submit" size="sm" disabled={!name.trim() || create.isPending}>
-          {create.isPending ? <GoldfishInline /> : <Plus className="h-3.5 w-3.5" />} {t("common.add")}
+          {create.isPending ? <MaikoInline /> : <Plus className="h-3.5 w-3.5" />} {t("common.add")}
         </Button>
         {missingPresets.length > 0 && (
           <span className="ml-2 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
@@ -127,7 +127,7 @@ function Environments({ project }: { project: Project }) {
       {remove.error && <ErrorNote error={remove.error} />}
       {envs.error && <ErrorNote error={envs.error} />}
 
-      {envs.isLoading && <GoldfishLoader label={t("common.loading")} className="py-10" />}
+      {envs.isLoading && <MaikoLoader label={t("common.loading")} className="py-10" />}
       {envs.data?.length === 0 && <p className="py-4 text-sm text-muted-foreground">{t("envs.empty")}</p>}
 
       {envs.data && envs.data.length > 0 && (

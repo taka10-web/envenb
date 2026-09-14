@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Badge, cn, GoldfishLoader } from "@envfish/ui";
+import { Badge, cn, MaikoLoader } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import { PageHeader } from "../components/PageHeader";
 import { ErrorNote } from "../components/ErrorNote";
@@ -28,7 +28,7 @@ export function ActivityPage() {
     <div>
       <PageHeader title={t("activity.title")} />
       {audit.error && <ErrorNote error={audit.error} />}
-      {audit.isLoading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
+      {audit.isLoading && <MaikoLoader label={t("common.loading")} className="py-16" />}
       {rows?.length === 0 && <EmptyState text={t("activity.empty")} />}
       {rows && rows.length > 0 && (
         <Table>

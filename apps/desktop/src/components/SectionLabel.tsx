@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@envfish/ui";
+import { cn } from "@envenb/ui";
 
 /** Section heading: small mono uppercase, optional trailing content (counts, actions). */
 export function SectionLabel({ children, right, className }: { children: ReactNode; right?: ReactNode; className?: string }) {

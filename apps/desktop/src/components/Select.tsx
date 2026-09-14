@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@envfish/ui";
+import { cn } from "@envenb/ui";
 
 /** Native <select> styled like the shared Input primitive. */
 export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {

@@ -41,14 +41,14 @@ pub enum CoreError {
     #[error("invalid name: {0}")]
     InvalidName(String),
 
-    #[error("no project selected; run `envfish use <project>` first")]
+    #[error("no project selected; run `envenb use <project>` first")]
     NoCurrentProject,
 
-    #[error("no environment selected; run `envfish env <environment>` first")]
+    #[error("no environment selected; run `envenb env <environment>` first")]
     NoCurrentEnvironment,
 
     #[error("vault error: {0}")]
-    Vault(#[from] envfish_vault::VaultError),
+    Vault(#[from] envenb_vault::VaultError),
 
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
@@ -66,6 +66,6 @@ pub enum CoreError {
     #[error("state file is corrupted: {0}")]
     StateParse(#[from] serde_json::Error),
 
-    #[error("could not determine a data directory for EnvFish")]
+    #[error("could not determine a data directory for EnvEnb")]
     NoDataDir,
 }

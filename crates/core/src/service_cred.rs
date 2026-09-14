@@ -2,8 +2,8 @@
 //! databases, files/certificates).
 //!
 //! Listing returns metadata and non-secret fields only. The two internal-tier
-//! consumers of plaintext are [`EnvFish::with_credential_field`] (closure-based,
-//! used by `envfish ssh`, `envfish run`, and the clipboard copy in the desktop
+//! consumers of plaintext are [`EnvEnb::with_credential_field`] (closure-based,
+//! used by `envenb ssh`, `envenb run`, and the clipboard copy in the desktop
 //! app — all human-initiated) and nothing else. There is no AI-facing reader.
 
 use chrono::Utc;
@@ -12,7 +12,7 @@ use crate::error::{CoreError, Result};
 use crate::model::{Credential, CredentialKind};
 use crate::repo_cred as repo;
 use crate::secret::SecretValue;
-use crate::service::EnvFish;
+use crate::service::EnvEnb;
 
 /// One field to store. Every value arrives as a `SecretValue`; whether it is
 /// sealed or stored plain is decided by the kind's [`FieldSpec`](crate::FieldSpec).
@@ -37,7 +37,7 @@ pub struct NewCredential {
     pub fields: Vec<CredentialFieldInput>,
 }
 
-impl EnvFish {
+impl EnvEnb {
     pub async fn list_credentials(&self, environment_id: &str) -> Result<Vec<Credential>> {
         self.get_environment(environment_id).await?;
         let mut out = repo::list_headers(self.pool(), environment_id).await?;
@@ -212,11 +212,11 @@ impl EnvFish {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use envfish_vault::InMemoryMasterKeyProvider;
+    use envenb_vault::InMemoryMasterKeyProvider;
     use sqlx::Row;
 
-    async fn app() -> EnvFish {
-        EnvFish::open_in_memory(&InMemoryMasterKeyProvider::random())
+    async fn app() -> EnvEnb {
+        EnvEnb::open_in_memory(&InMemoryMasterKeyProvider::random())
             .await
             .unwrap()
     }

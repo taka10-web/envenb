@@ -1,12 +1,12 @@
 [package]
-name = "envfish-daemon"
+name = "envenb-daemon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "EnvFish Local Agent skeleton. Phase 1 defines the boundary only; IPC, Broker and MCP land in later phases."
+description = "EnvEnb Local Agent skeleton. Phase 1 defines the boundary only; IPC, Broker and MCP land in later phases."
 
 [dependencies]
-envfish-core = { workspace = true }
+envenb-core = { workspace = true }
 tokio = { workspace = true, features = ["net", "io-util"] }
 serde_json = { workspace = true }
 serde = { workspace = true }

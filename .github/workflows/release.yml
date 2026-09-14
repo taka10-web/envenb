@@ -48,7 +48,7 @@ jobs:
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: EnvFish ${{ github.ref_name }}
+          releaseName: EnvEnb ${{ github.ref_name }}
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
@@ -77,15 +77,15 @@ jobs:
       - name: Linux system deps
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
-      - run: cargo build --release -p envfish-cli --target ${{ matrix.target }}
+      - run: cargo build --release -p envenb-cli --target ${{ matrix.target }}
       - name: Package
         shell: bash
         run: |
           mkdir -p out
-          BIN=envfish; [ "${{ runner.os }}" = "Windows" ] && BIN=envfish.exe
+          BIN=envenb; [ "${{ runner.os }}" = "Windows" ] && BIN=envenb.exe
           cp target/${{ matrix.target }}/release/$BIN out/
-          cd out && tar czf ../envfish-${{ github.ref_name }}-${{ matrix.target }}.tar.gz $BIN
+          cd out && tar czf ../envenb-${{ github.ref_name }}-${{ matrix.target }}.tar.gz $BIN
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
-          files: envfish-*.tar.gz
+          files: envenb-*.tar.gz

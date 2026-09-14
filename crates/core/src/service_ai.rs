@@ -17,8 +17,8 @@ use crate::permission::{self, Scope};
 use crate::repo;
 use crate::repo_ai as ai;
 use crate::secret::SecretValue;
-use crate::service::EnvFish;
-use envfish_vault::MasterKeyProvider as _;
+use crate::service::EnvEnb;
+use envenb_vault::MasterKeyProvider as _;
 
 pub const SETTING_LANGUAGE: &str = "language";
 pub const SETTING_KEY_BACKEND: &str = "key_backend";
@@ -100,7 +100,7 @@ impl std::fmt::Debug for ProcessEnv {
     }
 }
 
-impl EnvFish {
+impl EnvEnb {
     // ---------- settings ----------
 
     pub async fn settings(&self) -> Result<Settings> {
@@ -149,11 +149,11 @@ impl EnvFish {
         if current == backend {
             return self.settings().await;
         }
-        let source = EnvFish::provider_for(self.paths(), &current)?;
+        let source = EnvEnb::provider_for(self.paths(), &current)?;
         let key = source.load_or_create()?;
         match backend {
             "file" => {
-                let target = envfish_vault::FileMasterKeyProvider::new(self.paths().master_key());
+                let target = envenb_vault::FileMasterKeyProvider::new(self.paths().master_key());
                 if target.exists() {
                     return Err(CoreError::InvalidName(
                         "a master.key file already exists; remove it manually before switching".into(),
@@ -164,7 +164,10 @@ impl EnvFish {
             }
             #[cfg(feature = "keychain")]
             "keychain" => {
-                let target = envfish_vault::KeychainMasterKeyProvider::new(self.paths().profile());
+                let mut target = envenb_vault::KeychainMasterKeyProvider::new(self.paths().profile());
+                if let Some(legacy) = self.paths().legacy_profile() {
+                    target = target.with_legacy(legacy);
+                }
                 if target.exists()? {
                     return Err(CoreError::InvalidName(
                         "a key already exists in the OS keychain for this data directory".into(),
@@ -181,9 +184,9 @@ impl EnvFish {
         }
         ai::set_setting(self.pool(), SETTING_KEY_BACKEND, backend).await?;
         match current.as_str() {
-            "file" => envfish_vault::FileMasterKeyProvider::new(self.paths().master_key()).delete()?,
+            "file" => envenb_vault::FileMasterKeyProvider::new(self.paths().master_key()).delete()?,
             #[cfg(feature = "keychain")]
-            "keychain" => envfish_vault::KeychainMasterKeyProvider::new(self.paths().profile()).delete()?,
+            "keychain" => envenb_vault::KeychainMasterKeyProvider::new(self.paths().profile()).delete()?,
             _ => {}
         }
         tracing::info!(from = %current, to = %backend, "master key backend switched");
@@ -575,7 +578,7 @@ impl EnvFish {
     //
     // These two methods hand plaintext to *code*, never to a wire format. They are
     // the only sanctioned consumers of decrypted secrets: the process runner
-    // (`envfish run`) and the Broker. Neither is reachable from an AI-facing API
+    // (`envenb run`) and the Broker. Neither is reachable from an AI-facing API
     // by value: the runner is human-initiated, the Broker returns responses only.
 
     /// Decrypt every variable of an environment for injection into a child process.
@@ -619,10 +622,10 @@ impl EnvFish {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use envfish_vault::InMemoryMasterKeyProvider;
+    use envenb_vault::InMemoryMasterKeyProvider;
 
-    async fn app() -> EnvFish {
-        EnvFish::open_in_memory(&InMemoryMasterKeyProvider::random())
+    async fn app() -> EnvEnb {
+        EnvEnb::open_in_memory(&InMemoryMasterKeyProvider::random())
             .await
             .unwrap()
     }

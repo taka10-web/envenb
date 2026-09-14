@@ -1,4 +1,4 @@
-import { cn } from "@envfish/ui";
+import { cn } from "@envenb/ui";
 
 export type KindTone = "teal" | "emerald" | "amber" | "sky" | "violet" | "rose" | "orange" | "slate";
 

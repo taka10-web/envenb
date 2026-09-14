@@ -1,7 +1,7 @@
 //! SQLx queries for credentials. No business rules, no crypto.
 
 use chrono::{DateTime, Utc};
-use envfish_vault::EncryptedSecret;
+use envenb_vault::EncryptedSecret;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{Row, SqlitePool};
 

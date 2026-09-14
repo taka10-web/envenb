@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, Check, ClipboardPaste, Eye, EyeOff, FileDown, FolderOpen, Trash2, Upload, X } from "lucide-react";
-import { Badge, Button, cn, GoldfishInline, Label } from "@envfish/ui";
+import { Badge, Button, cn, MaikoInline, Label } from "@envenb/ui";
 import { api } from "../lib/api";
 import type { DotenvPreview, ImportReport, VariableKind } from "../lib/types";
 import { ErrorNote } from "./ErrorNote";
@@ -195,7 +195,7 @@ export function DotenvImport({
             <div className="flex flex-wrap items-center justify-center gap-2">
               <input ref={fileInput} type="file" accept=".env,.env.*,text/plain" hidden data-testid="dotenv-file" onChange={onFileChosen} />
               <Button type="button" size="sm" variant="outline" onClick={() => fileInput.current?.click()} disabled={preview.isPending}>
-                {preview.isPending ? <GoldfishInline /> : <FolderOpen className="h-3.5 w-3.5" />} {t("vars.import.chooseFile")}
+                {preview.isPending ? <MaikoInline /> : <FolderOpen className="h-3.5 w-3.5" />} {t("vars.import.chooseFile")}
               </Button>
               <Button type="button" size="sm" variant={pasteOpen ? "secondary" : "ghost"} onClick={() => setPasteOpen((o) => !o)} aria-pressed={pasteOpen}>
                 <ClipboardPaste className="h-3.5 w-3.5" /> {t("vars.import.pasteInstead")}
@@ -231,7 +231,7 @@ export function DotenvImport({
               />
               <div>
                 <Button type="button" size="sm" onClick={() => preview.mutate(text)} disabled={!text.trim() || preview.isPending}>
-                  {preview.isPending && <GoldfishInline />} {t("vars.import.continue")}
+                  {preview.isPending && <MaikoInline />} {t("vars.import.continue")}
                 </Button>
               </div>
             </div>
@@ -342,7 +342,7 @@ export function DotenvImport({
                 <ArrowLeft className="h-3.5 w-3.5" /> {t("vars.import.back")}
               </Button>
               <Button type="button" size="sm" onClick={() => doImport.mutate()} disabled={selected.length === 0 || doImport.isPending}>
-                {doImport.isPending ? <GoldfishInline /> : <FileDown className="h-3.5 w-3.5" />} {t("vars.import.confirm", { count: selected.length })}
+                {doImport.isPending ? <MaikoInline /> : <FileDown className="h-3.5 w-3.5" />} {t("vars.import.confirm", { count: selected.length })}
               </Button>
             </div>
           </div>

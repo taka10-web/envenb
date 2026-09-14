@@ -1381,11 +1381,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-broker"
+name = "envenb-broker"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "envfish-core",
+ "envenb-core",
  "hex",
  "hmac 0.12.1",
  "reqwest",
@@ -1399,16 +1399,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-cli"
+name = "envenb-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
  "clap",
  "crossterm",
- "envfish-core",
- "envfish-daemon",
- "envfish-mcp",
+ "envenb-core",
+ "envenb-daemon",
+ "envenb-mcp",
  "libc",
  "secrecy",
  "serde",
@@ -1421,13 +1421,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-core"
+name = "envenb-core"
 version = "0.1.0"
 dependencies = [
  "arboard",
  "chrono",
  "dirs",
- "envfish-vault",
+ "envenb-vault",
  "hmac 0.12.1",
  "secrecy",
  "serde",
@@ -1442,10 +1442,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-daemon"
+name = "envenb-daemon"
 version = "0.1.0"
 dependencies = [
- "envfish-core",
+ "envenb-core",
  "serde",
  "serde_json",
  "tempfile",
@@ -1455,10 +1455,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-desktop"
+name = "envenb-desktop"
 version = "0.1.0"
 dependencies = [
- "envfish-core",
+ "envenb-core",
  "serde",
  "serde_json",
  "tauri",
@@ -1470,11 +1470,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-mcp"
+name = "envenb-mcp"
 version = "0.1.0"
 dependencies = [
- "envfish-broker",
- "envfish-core",
+ "envenb-broker",
+ "envenb-core",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -1483,7 +1483,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "envfish-vault"
+name = "envenb-vault"
 version = "0.1.0"
 dependencies = [
  "chacha20poly1305",

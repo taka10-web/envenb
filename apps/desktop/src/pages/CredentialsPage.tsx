@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, FolderOpen, KeyRound, Lock, Pencil, Plus, Trash2 } from "lucide-react";
-import { Button, GoldfishInline, GoldfishLoader, Input } from "@envfish/ui";
+import { Button, MaikoInline, MaikoLoader, Input } from "@envenb/ui";
 import { api, queryKeys } from "../lib/api";
 import { CREDENTIAL_KINDS, type Credential, type CredentialKind, type FieldSpec } from "../lib/types";
 import { PageHeader } from "../components/PageHeader";
@@ -129,7 +129,7 @@ function EnvironmentCredentials({ projectId, environmentId }: { projectId: strin
       {specs.error && <ErrorNote error={specs.error} />}
       {creds.error && <ErrorNote error={creds.error} />}
       {remove.error && <ErrorNote error={remove.error} />}
-      {loading && <GoldfishLoader label={t("common.loading")} className="py-16" />}
+      {loading && <MaikoLoader label={t("common.loading")} className="py-16" />}
 
       {!loading && list.length === 0 && (
         <EmptyState text={t("creds.empty")}>
@@ -252,7 +252,7 @@ function CopyButton({ credentialId, field, label, ariaLabel, code = false }: { c
   return (
     <span className="inline-flex items-center gap-1 font-mono text-[11px]">
       <Button type="button" variant="outline" size="sm" className="h-6 gap-1 px-1.5 font-mono text-[11px]" aria-label={ariaLabel} onClick={() => copy.mutate()} disabled={copy.isPending}>
-        {copy.isPending ? <GoldfishInline size={1} /> : <Copy className="h-3 w-3" />} {code ? label : `${label} ${MASK}`}
+        {copy.isPending ? <MaikoInline size={1} /> : <Copy className="h-3 w-3" />} {code ? label : `${label} ${MASK}`}
       </Button>
       {ttl !== null && <span className="text-muted-foreground">{t("creds.copied", { seconds: ttl })}</span>}
       {copy.error && <span className="text-destructive">{copy.error instanceof Error ? copy.error.message : t("common.unexpectedError")}</span>}
@@ -345,7 +345,7 @@ function CredentialForm({ specs, environmentId, editing, onDone }: FormProps) {
       {save.error && <ErrorNote error={save.error} />}
       <div className="flex justify-end">
         <Button type="submit" disabled={!canSubmit}>
-          {save.isPending ? <GoldfishInline /> : editing ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editing ? t("creds.update") : t("common.save")}
+          {save.isPending ? <MaikoInline /> : editing ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editing ? t("creds.update") : t("common.save")}
         </Button>
       </div>
     </form>

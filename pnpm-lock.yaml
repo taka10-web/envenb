@@ -10,7 +10,7 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@envfish/ui':
+      '@envenb/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tanstack/react-query':
