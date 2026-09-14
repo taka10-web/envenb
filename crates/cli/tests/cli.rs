@@ -11,8 +11,19 @@ fn envfish(home: &Path) -> Command {
         .env("ENVFISH_LANG", "en")
         .env("ENVFISH_KEY_BACKEND", "file")
         .env("ENVFISH_ALLOW_UNATTENDED", "1")
-        .env_remove("CLAUDECODE")
         .env_remove("RUST_LOG");
+    // The test suite itself may run inside an agent session; the harness must
+    // look like a plain shell so the human gate is exercised deliberately.
+    for marker in [
+        "CLAUDECODE",
+        "CLAUDE_CODE_ENTRYPOINT",
+        "CODEX_SANDBOX",
+        "CODEX_CI",
+        "CURSOR_AGENT",
+        "GEMINI_CLI",
+    ] {
+        cmd.env_remove(marker);
+    }
     cmd
 }
 
