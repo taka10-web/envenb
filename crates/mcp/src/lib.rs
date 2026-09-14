@@ -130,24 +130,21 @@ impl McpServer {
         match name {
             "list_projects" => {
                 let projects = self.core.list_projects().await?;
-                Ok(json!(
-                    projects
-                        .iter()
-                        .map(|p| json!({"id": p.id, "name": p.name, "local_path": p.local_path}))
-                        .collect::<Vec<_>>()
-                ))
+                Ok(json!({ "projects": projects
+                    .iter()
+                    .map(|p| json!({"id": p.id, "name": p.name, "local_path": p.local_path}))
+                    .collect::<Vec<_>>() }))
             }
             "list_environments" => {
-                let project = self.core.resolve_project(str_arg(args, "project")?).await?;
+                let project = self.resolve_project_arg(args).await?;
                 let envs = self.core.list_environments(&project.id).await?;
-                Ok(json!(
-                    envs.iter()
-                        .map(|e| json!({"id": e.id, "name": e.name}))
-                        .collect::<Vec<_>>()
-                ))
+                Ok(json!({ "environments": envs
+                    .iter()
+                    .map(|e| json!({"id": e.id, "name": e.name}))
+                    .collect::<Vec<_>>() }))
             }
             "list_connections" => {
-                let project = self.core.resolve_project(str_arg(args, "project")?).await?;
+                let project = self.resolve_project_arg(args).await?;
                 let conns = match args.get("environment").and_then(|v| v.as_str()) {
                     Some(env) => {
                         let e = self.core.resolve_environment(&project.id, env).await?;
@@ -163,25 +160,25 @@ impl McpServer {
                         "base_url": c.base_url, "status": if c.auth_secret.is_some() || c.auth_style == "none" { "connected" } else { "no credential" }
                     }));
                 }
-                Ok(json!(out))
+                Ok(json!({ "connections": out }))
             }
             "list_variables" => {
                 let (project, env) = self.resolve_env(args).await?;
                 let vars = self.core.list_variables(&env.id).await?;
                 let _ = project;
-                Ok(json!(vars.iter().map(|v| match v.kind {
+                Ok(json!({ "variables": vars.iter().map(|v| match v.kind {
                     VariableKind::Public => json!({"name": v.name, "kind": "PUBLIC", "value": v.value}),
                     VariableKind::Secret => json!({"name": v.name, "kind": "SECRET", "value": null, "note": "value withheld; use call_service"}),
-                }).collect::<Vec<_>>()))
+                }).collect::<Vec<_>>() }))
             }
             "list_credentials" => {
                 let (_project, env) = self.resolve_env(args).await?;
                 let creds = self.core.list_credentials(&env.id).await?;
-                Ok(json!(creds.iter().map(|c| json!({
+                Ok(json!({ "credentials": creds.iter().map(|c| json!({
                     "name": c.name, "kind": c.kind, "note": c.note,
                     "fields": c.fields.iter().map(|f| json!({"field": f.field, "secret": f.secret, "value": f.value})).collect::<Vec<_>>(),
                     "note_for_ai": "secret fields are withheld; ask the user to use them"
-                })).collect::<Vec<_>>()))
+                })).collect::<Vec<_>>() }))
             }
             "call_service" => {
                 let req = BrokerRequest {
@@ -219,11 +216,37 @@ impl McpServer {
         }
     }
 
+    /// Resolve the project from `args`, or fall back to the only one that exists.
+    /// Agents routinely reach for `list_environments` before they know a name.
+    async fn resolve_project_arg(&self, args: &Value) -> Result<envfish_core::Project, ToolError> {
+        if let Some(name) = args
+            .get("project")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+        {
+            return Ok(self.core.resolve_project(name).await?);
+        }
+        let mut projects = self.core.list_projects().await?;
+        match projects.len() {
+            1 => Ok(projects.remove(0)),
+            0 => Err(ToolError::User(
+                "no projects exist yet; the user creates one with `envfish project add <name>`".into(),
+            )),
+            _ => {
+                let names: Vec<&str> = projects.iter().map(|p| p.name.as_str()).collect();
+                Err(ToolError::User(format!(
+                    "several projects exist; pass `project`: {}",
+                    names.join(", ")
+                )))
+            }
+        }
+    }
+
     async fn resolve_env(
         &self,
         args: &Value,
     ) -> Result<(envfish_core::Project, envfish_core::Environment), ToolError> {
-        let project = self.core.resolve_project(str_arg(args, "project")?).await?;
+        let project = self.resolve_project_arg(args).await?;
         let env = self
             .core
             .resolve_environment(&project.id, str_arg(args, "environment")?)
@@ -339,8 +362,15 @@ fn pairs(v: Option<&Value>) -> Vec<(String, String)> {
     }
 }
 
+/// MCP requires `structuredContent` to be a JSON *object*, and only when the tool
+/// declares an `outputSchema`. Anything else goes out as text only.
 fn tool_ok(v: Value) -> Value {
-    json!({ "content": [{ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap_or_default() }], "structuredContent": v, "isError": false })
+    let text = serde_json::to_string_pretty(&v).unwrap_or_default();
+    let mut result = json!({ "content": [{ "type": "text", "text": text }], "isError": false });
+    if v.is_object() {
+        result["structuredContent"] = v;
+    }
+    result
 }
 
 fn tool_err(msg: &str) -> Value {
@@ -366,28 +396,66 @@ pub fn tool_definitions() -> Vec<Value> {
     vec![
         json!({
             "name": "list_projects",
-            "description": "List EnvFish projects registered on this machine.",
-            "inputSchema": { "type": "object", "properties": {} }
+            "description": "List EnvFish projects registered on this machine. Start here: other tools take a project name.",
+            "inputSchema": { "type": "object", "properties": {} },
+            "outputSchema": {
+                "type": "object",
+                "properties": { "projects": { "type": "array", "items": { "type": "object", "properties": {
+                    "id": { "type": "string" }, "name": { "type": "string" }, "local_path": { "type": ["string", "null"] }
+                }, "required": ["id", "name"] } } },
+                "required": ["projects"]
+            }
         }),
         json!({
             "name": "list_environments",
-            "description": "List environments (development, staging, production, ...) of a project.",
-            "inputSchema": { "type": "object", "properties": { "project": env_props["project"] }, "required": ["project"] }
+            "description": "List environments (development, staging, production, ...) of a project. Omit `project` when only one project exists.",
+            "inputSchema": { "type": "object", "properties": { "project": env_props["project"] } },
+            "outputSchema": {
+                "type": "object",
+                "properties": { "environments": { "type": "array", "items": { "type": "object", "properties": {
+                    "id": { "type": "string" }, "name": { "type": "string" }
+                }, "required": ["id", "name"] } } },
+                "required": ["environments"]
+            }
         }),
         json!({
             "name": "list_connections",
-            "description": "List external service connections of a project. Returns names and status only; credentials are never returned.",
-            "inputSchema": { "type": "object", "properties": env_props, "required": ["project"] }
+            "description": "List external service connections of a project. Returns names and status only; credentials are never returned. Omit `project` when only one project exists.",
+            "inputSchema": { "type": "object", "properties": env_props },
+            "outputSchema": {
+                "type": "object",
+                "properties": { "connections": { "type": "array", "items": { "type": "object", "properties": {
+                    "id": { "type": "string" }, "name": { "type": "string" }, "kind": { "type": "string" },
+                    "environment": { "type": "string" }, "base_url": { "type": "string" }, "status": { "type": "string" }
+                }, "required": ["id", "name", "kind"] } } },
+                "required": ["connections"]
+            }
         }),
         json!({
             "name": "list_variables",
-            "description": "List variables of an environment. PUBLIC variables include values; SECRET variables are names only.",
-            "inputSchema": { "type": "object", "properties": env_props, "required": ["project", "environment"] }
+            "description": "List variables of an environment. PUBLIC variables include values; SECRET variables are names only. Omit `project` when only one project exists.",
+            "inputSchema": { "type": "object", "properties": env_props, "required": ["environment"] },
+            "outputSchema": {
+                "type": "object",
+                "properties": { "variables": { "type": "array", "items": { "type": "object", "properties": {
+                    "name": { "type": "string" }, "kind": { "type": "string", "enum": ["PUBLIC", "SECRET"] },
+                    "value": { "type": ["string", "null"] }, "note": { "type": "string" }
+                }, "required": ["name", "kind"] } } },
+                "required": ["variables"]
+            }
         }),
         json!({
             "name": "list_credentials",
-            "description": "List stored credentials (test accounts, SSH targets, databases, files) of an environment: names, kinds and non-secret fields such as host or URL. Secret fields are never returned.",
-            "inputSchema": { "type": "object", "properties": env_props, "required": ["project", "environment"] }
+            "description": "List stored credentials (test accounts, SSH targets, databases, files) of an environment: names, kinds and non-secret fields such as host or URL. Secret fields are never returned. Omit `project` when only one project exists.",
+            "inputSchema": { "type": "object", "properties": env_props, "required": ["environment"] },
+            "outputSchema": {
+                "type": "object",
+                "properties": { "credentials": { "type": "array", "items": { "type": "object", "properties": {
+                    "name": { "type": "string" }, "kind": { "type": "string" }, "note": { "type": ["string", "null"] },
+                    "fields": { "type": "array", "items": { "type": "object" } }
+                }, "required": ["name", "kind"] } } },
+                "required": ["credentials"]
+            }
         }),
         json!({
             "name": "call_service",
@@ -540,6 +608,95 @@ mod tests {
         assert_eq!(audit.len(), 1);
         assert_eq!(audit[0].decision, "DENIED");
         assert_eq!(audit[0].summary, "DELETE /users/1");
+    }
+
+    /// MCP requires `structuredContent` to be a JSON object, and requires a tool
+    /// that returns one to declare an `outputSchema`. Returning a bare array made
+    /// every list tool fail client-side validation.
+    #[tokio::test]
+    async fn list_tools_return_objects_matching_their_output_schema() {
+        let s = server().await;
+        let p = s.core.resolve_project("my-app").await.unwrap();
+        let e = s.core.create_environment(&p.id, "development").await.unwrap();
+        s.core
+            .set_public_variable(&e.id, "APP_URL", "http://x")
+            .await
+            .unwrap();
+
+        for (tool, args, key) in [
+            ("list_projects", json!({}), "projects"),
+            (
+                "list_environments",
+                json!({ "project": "my-app" }),
+                "environments",
+            ),
+            ("list_connections", json!({ "project": "my-app" }), "connections"),
+            (
+                "list_variables",
+                json!({ "project": "my-app", "environment": "development" }),
+                "variables",
+            ),
+            (
+                "list_credentials",
+                json!({ "project": "my-app", "environment": "development" }),
+                "credentials",
+            ),
+        ] {
+            let resp = s
+                .handle(json!({"jsonrpc":"2.0","id":1,"method":"tools/call",
+                               "params":{"name": tool, "arguments": args}}))
+                .await
+                .unwrap();
+            let result = &resp["result"];
+            assert_eq!(result["isError"], false, "{tool} failed: {result}");
+            let structured = &result["structuredContent"];
+            assert!(
+                structured.is_object(),
+                "{tool}: structuredContent must be an object"
+            );
+            assert!(structured[key].is_array(), "{tool}: expected a `{key}` array");
+
+            // The declared schema must match what we actually send.
+            let def = tool_definitions()
+                .into_iter()
+                .find(|d| d["name"] == tool)
+                .unwrap_or_else(|| panic!("{tool} is not declared"));
+            assert_eq!(def["outputSchema"]["type"], "object", "{tool}: outputSchema");
+            assert!(
+                def["outputSchema"]["properties"][key].is_object(),
+                "{tool}: outputSchema is missing `{key}`"
+            );
+        }
+    }
+
+    /// With a single project, an agent should not have to name it.
+    #[tokio::test]
+    async fn project_argument_is_optional_when_unambiguous() {
+        let s = server().await;
+        let p = s.core.resolve_project("my-app").await.unwrap();
+        s.core.create_environment(&p.id, "development").await.unwrap();
+
+        let resp = s
+            .handle(json!({"jsonrpc":"2.0","id":1,"method":"tools/call",
+                           "params":{"name":"list_environments","arguments":{}}}))
+            .await
+            .unwrap();
+        assert_eq!(resp["result"]["isError"], false, "{resp}");
+        assert_eq!(
+            resp["result"]["structuredContent"]["environments"][0]["name"],
+            "development"
+        );
+
+        // With two projects the tool asks for one by name instead of guessing.
+        s.core.create_project("other", None).await.unwrap();
+        let resp = s
+            .handle(json!({"jsonrpc":"2.0","id":2,"method":"tools/call",
+                           "params":{"name":"list_environments","arguments":{}}}))
+            .await
+            .unwrap();
+        assert_eq!(resp["result"]["isError"], true);
+        let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("my-app") && text.contains("other"), "{text}");
     }
 
     #[tokio::test]

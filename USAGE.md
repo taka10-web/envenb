@@ -257,6 +257,10 @@ Codex など別のツールは `--client codex` のように名前を変える�
 
 AI に見えるツールは次の 6 つです。**Secret を返すものはありません。**
 
+一覧系のツールはオブジェクトを返します (`{"projects": [...]}` のように)。MCP の仕様で
+`structuredContent` はオブジェクトである必要があるためです。プロジェクトが 1 つだけのときは
+`project` 引数を省略できます。
+
 | ツール | 内容 |
 |---|---|
 | `list_projects` / `list_environments` / `list_connections` | 一覧 (認証情報は名前と状態のみ) |
