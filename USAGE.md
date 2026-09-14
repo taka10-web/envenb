@@ -50,12 +50,38 @@ envenb status                                     # 今どこを触っている�
 
 ### 3. 既存の .env を取り込む
 
+ファイル名は何でも構いません。引数を省くと `.env` を見ます。
+
 ```bash
+envenb import                    # .env
 envenb import .env.local
+envenb import .env.production
 ```
 
 変数ごとに PUBLIC (AI に見えてよい設定値) か SECRET (鍵・トークン) かを聞かれます。
 Enter を押すと提案どおりです。取り込んだファイルは自動で `.gitignore` に追記されます。
+
+#### .env ファイルの種類について
+
+慣習として使い分けられているだけで、**中身の形式はどれも同じ** (`KEY=value`) です。
+EnvEnb は名前で扱いを変えます。
+
+| ファイル | 中身 | git | EnvEnb の扱い |
+|---|---|---|---|
+| `.env` | 実際の値 | 入れない | 取り込む・削除対象 |
+| `.env.local` | 実際の値 (自分の環境だけ) | 入れない | 取り込む・削除対象 |
+| `.env.production` など | 環境ごとの実際の値 | 入れない | 取り込む・削除対象 |
+| `.env.example` | **値が空の見本** | **入れる** | 触らない |
+
+`.env.example` はチームに「この変数が要る」と伝えるためのテンプレートで、
+値が入っていないので git に入れて共有します。**EnvEnb はこれを消しません。**
+`.env.sample` `.env.template` も同じ扱いです。
+
+EnvEnb から見本を書き出すこともできます。
+
+```bash
+envenb export-example .env.example   # PUBLIC は値付き、SECRET は名前だけ
+```
 
 ### 4. アプリを起動する
 

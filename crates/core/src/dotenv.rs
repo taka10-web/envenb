@@ -416,6 +416,36 @@ pub fn dotenv_files_in(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 }
 
 #[cfg(test)]
+mod filename_tests {
+    use super::*;
+
+    /// `clean` deletes whatever this accepts, so the template names must never
+    /// be treated as real dotenv files: they are meant to be committed.
+    #[test]
+    fn real_dotenv_files_are_recognised() {
+        for name in [".env", ".env.local", ".env.production", ".env.development.local"] {
+            assert!(is_dotenv_filename(name), "{name} should be a dotenv file");
+        }
+    }
+
+    #[test]
+    fn templates_and_unrelated_files_are_not() {
+        for name in [
+            ".env.example",
+            ".env.sample",
+            ".env.template",
+            ".environment",
+            "env",
+            "env.local",
+            "docker.env",
+            "README.md",
+        ] {
+            assert!(!is_dotenv_filename(name), "{name} should not be a dotenv file");
+        }
+    }
+}
+
+#[cfg(test)]
 mod remove_tests {
     use super::*;
     use std::collections::HashSet;
