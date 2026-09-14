@@ -27,9 +27,9 @@ pub fn agent_marker() -> Option<&'static str> {
 
 /// Refuse unless a human is plausibly at the keyboard.
 pub fn require_human(what: &str) -> anyhow::Result<()> {
-    if std::env::var_os(OVERRIDE_ENV).is_some_and(|v| v == "1") {
-        return Ok(());
-    }
+    // Agent markers win over the override: a script the human wrote does not run
+    // inside an agent's shell, and an agent that strips the marker has to do so in
+    // a command the human gets to review.
     if let Some(marker) = agent_marker() {
         anyhow::bail!(
             "{what}: {} ({marker}). {}",
@@ -42,6 +42,9 @@ pub fn require_human(what: &str) -> anyhow::Result<()> {
                 "Secret は人間と、実際の端末から起動した `envfish run` のためのものです。AI エージェントは MCP の Broker を使ってください。"
             )
         );
+    }
+    if std::env::var_os(OVERRIDE_ENV).is_some_and(|v| v == "1") {
+        return Ok(());
     }
     if !std::io::stdin().is_terminal() {
         let hint = match crate::i18n::lang() {
