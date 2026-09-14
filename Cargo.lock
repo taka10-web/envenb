@@ -1409,6 +1409,7 @@ dependencies = [
  "envfish-core",
  "envfish-daemon",
  "envfish-mcp",
+ "libc",
  "secrecy",
  "serde",
  "serde_json",

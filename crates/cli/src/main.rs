@@ -10,6 +10,13 @@ use envfish_core::EnvFish;
 
 #[tokio::main]
 async fn main() {
+    // `envfish ... | head` closes the pipe early; exit quietly instead of panicking
+    // inside a println. Rust ignores SIGPIPE by default, so restore the default.
+    #[cfg(unix)]
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+
     // Open the data directory first so the persisted language setting can shape
     // the help text. Failures are deferred until a command actually needs the core.
     let core = EnvFish::open_default().await;
