@@ -589,3 +589,49 @@ fn plaintext_commands_refuse_agents_and_non_terminals() {
     assert!(!out.status.success());
     assert!(!home.join("x.env").exists());
 }
+
+#[test]
+fn selection_errors_name_the_next_command() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    // Nothing registered yet.
+    let (ok, _, err) = run(home, &["import", ".env"]);
+    assert!(!ok);
+    assert!(
+        err.contains("no projects yet") && err.contains("envfish project add"),
+        "{err}"
+    );
+
+    // A project exists but none is selected.
+    assert!(run(home, &["project", "add", "my-app"]).0);
+    assert!(run(home, &["project", "add", "other"]).0);
+    let state = home.join("state.json");
+    let raw = std::fs::read_to_string(&state).unwrap().replace(
+        &format!("\"current_project_id\": \"{}\"", current_project_id(home)),
+        "\"current_project_id\": null",
+    );
+    std::fs::write(&state, raw).unwrap();
+    let (ok, _, err) = run(home, &["import", ".env"]);
+    assert!(!ok);
+    assert!(
+        err.contains("no project selected") && err.contains("envfish use my-app"),
+        "{err}"
+    );
+    assert!(err.contains("my-app, other"), "lists what is available: {err}");
+
+    // A project is selected but it has no environments.
+    assert!(run(home, &["use", "my-app"]).0);
+    let (ok, _, err) = run(home, &["import", ".env"]);
+    assert!(!ok);
+    assert!(
+        err.contains("no environments in my-app") && err.contains("--create"),
+        "{err}"
+    );
+}
+
+fn current_project_id(home: &Path) -> String {
+    let (_, out, _) = run(home, &["project", "list", "--json"]);
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    v[0]["id"].as_str().unwrap().to_string()
+}

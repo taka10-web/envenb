@@ -35,22 +35,71 @@ impl Ctx {
         ))
     }
 
+    /// The selected project, or an error that names the next command to run.
     pub async fn current_project(&self) -> anyhow::Result<Project> {
-        let id = self
-            .state
-            .current_project_id
-            .as_deref()
-            .ok_or(envfish_core::CoreError::NoCurrentProject)?;
-        Ok(self.app.get_project(id).await?)
+        match self.state.current_project_id.as_deref() {
+            Some(id) => Ok(self.app.get_project(id).await?),
+            None => Err(self.no_project_hint().await),
+        }
     }
 
+    /// The selected environment, or an error that names the next command to run.
     pub async fn current_environment(&self) -> anyhow::Result<Environment> {
-        let id = self
-            .state
-            .current_environment_id
-            .as_deref()
-            .ok_or(envfish_core::CoreError::NoCurrentEnvironment)?;
-        Ok(self.app.get_environment(id).await?)
+        match self.state.current_environment_id.as_deref() {
+            Some(id) => Ok(self.app.get_environment(id).await?),
+            None => Err(self.no_environment_hint().await),
+        }
+    }
+
+    /// "Nothing is selected" is the most common first-run error, so the message
+    /// lists the actual projects instead of the generic instruction.
+    async fn no_project_hint(&self) -> anyhow::Error {
+        let projects = self.app.list_projects().await.unwrap_or_default();
+        if projects.is_empty() {
+            return anyhow::anyhow!(
+                "{}\n  envfish project add <name> --path .",
+                tr(
+                    "no projects yet. Register one first:",
+                    "プロジェクトがまだありません。まず登録してください:"
+                )
+            );
+        }
+        let names: Vec<&str> = projects.iter().map(|p| p.name.as_str()).take(5).collect();
+        anyhow::anyhow!(
+            "{}\n  envfish use {}\n  ({} {})",
+            tr(
+                "no project selected. Select one:",
+                "プロジェクトが未選択です。選択してください:"
+            ),
+            names[0],
+            tr("available:", "登録済み:"),
+            names.join(", ")
+        )
+    }
+
+    async fn no_environment_hint(&self) -> anyhow::Error {
+        let Ok(project) = self.current_project().await else {
+            return self.no_project_hint().await;
+        };
+        let envs = self.app.list_environments(&project.id).await.unwrap_or_default();
+        if envs.is_empty() {
+            return anyhow::anyhow!(
+                "{} {}\n  envfish env development --create",
+                tr("no environments in", "環境がありません:"),
+                project.name
+            );
+        }
+        let names: Vec<&str> = envs.iter().map(|e| e.name.as_str()).take(5).collect();
+        anyhow::anyhow!(
+            "{}\n  envfish env {}\n  ({} {})",
+            tr(
+                "no environment selected. Select one:",
+                "環境が未選択です。選択してください:"
+            ),
+            names[0],
+            tr("available:", "登録済み:"),
+            names.join(", ")
+        )
     }
 }
 
