@@ -100,7 +100,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
       {showImport && (
         <div className="mb-5">
           <DotenvImport
-            projectId={projectId}
+            projectId={projectId ?? undefined}
             environmentId={environmentId}
             environmentName={environment?.name ?? ""}
             existingNames={vars.data?.map((v) => v.name) ?? []}

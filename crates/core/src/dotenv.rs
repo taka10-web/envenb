@@ -283,7 +283,7 @@ pub fn ensure_gitignored(repo_root: &std::path::Path, patterns: &[&str]) -> std:
             out.push_str(p);
             out.push('\n');
         }
-        if !lines.iter().any(|l| *l == "!.env.example") {
+        if !lines.contains(&"!.env.example") {
             out.push_str("!.env.example\n");
         }
         std::fs::write(&path, out)?;
