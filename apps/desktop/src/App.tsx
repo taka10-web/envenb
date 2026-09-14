@@ -24,22 +24,25 @@ const NAV: { to: string; label: MessageKey }[] = [
   { to: "/guide", label: "nav.guide" },
 ];
 
-function tabClass({ isActive }: { isActive: boolean }) {
+function navClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "-mb-px flex h-9 items-center border-b-2 px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-    isActive ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+    "flex h-8 items-center gap-2 rounded-md border-l-2 px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    isActive
+      ? "border-primary bg-accent/70 text-foreground"
+      : "border-transparent text-muted-foreground hover:bg-accent/40 hover:text-foreground",
   );
 }
 
 const switcherClass =
-  "h-7 max-w-[180px] truncate rounded-md border border-transparent bg-transparent pl-2 pr-6 font-mono text-xs text-foreground hover:border-border hover:bg-accent/60 focus-visible:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60";
+  "h-8 w-full truncate rounded-md border border-border bg-background px-2 font-mono text-xs text-foreground hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60";
 
-/** Project / environment switcher in the top bar. */
+/** Project / environment switcher at the top of the sidebar. */
 function ContextSwitcher() {
   const { t } = useI18n();
   const { projects, environments, projectId, environmentId, setProject, setEnvironment } = useAppContext();
   return (
-    <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+    <div className="flex flex-col gap-1.5 px-3 pb-3">
+      <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t("common.project")}</label>
       <select aria-label={t("common.project")} className={switcherClass} value={projectId ?? ""} onChange={(e) => setProject(e.target.value)} disabled={projects.length === 0}>
         {projects.length === 0 && <option value="">{t("context.noProject")}</option>}
         {projects.map((p) => (
@@ -48,7 +51,7 @@ function ContextSwitcher() {
           </option>
         ))}
       </select>
-      <span aria-hidden>/</span>
+      <label className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t("common.environment")}</label>
       <select
         aria-label={t("common.environment")}
         className={switcherClass}
@@ -69,22 +72,36 @@ function ContextSwitcher() {
 
 export default function App() {
   const { t } = useI18n();
+  const primary = NAV.slice(0, 6);
+  const secondary = NAV.slice(6);
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-6 border-b border-border px-4">
-        <NavLink to="/variables" className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <div className="flex h-screen">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-background/60">
+        <NavLink
+          to="/variables"
+          className="flex h-12 items-center gap-2 border-b border-border px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <Goldfish variant="red" size={2} />
           <span className="font-pixel text-base leading-none">EnvFish</span>
         </NavLink>
-        <ContextSwitcher />
-      </header>
-      <nav className="flex h-9 shrink-0 items-stretch border-b border-border px-4" aria-label="Pages">
-        {NAV.map(({ to, label }) => (
-          <NavLink key={to} to={to} className={tabClass}>
-            {t(label)}
-          </NavLink>
-        ))}
-      </nav>
+        <div className="border-b border-border pt-3">
+          <ContextSwitcher />
+        </div>
+        <nav className="flex flex-1 flex-col gap-0.5 px-2 py-3" aria-label="Pages">
+          {primary.map(({ to, label }) => (
+            <NavLink key={to} to={to} className={navClass}>
+              {t(label)}
+            </NavLink>
+          ))}
+          <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-3">
+            {secondary.map(({ to, label }) => (
+              <NavLink key={to} to={to} className={navClass}>
+                {t(label)}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+      </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1040px] px-6 py-6">
           <Routes>
