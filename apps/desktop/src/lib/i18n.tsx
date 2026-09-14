@@ -21,6 +21,7 @@ const en = {
   "nav.projects": "Projects",
   "nav.settings": "Settings",
   "nav.guide": "Guide",
+  "guide.contents": "Contents",
   "lang.label": "Language",
 
   "context.noProject": "No project",
@@ -244,6 +245,7 @@ const ja: Record<keyof typeof en, string> = {
   "nav.projects": "プロジェクト",
   "nav.settings": "設定",
   "nav.guide": "使い方",
+  "guide.contents": "目次",
   "lang.label": "言語",
 
   "context.noProject": "プロジェクトなし",

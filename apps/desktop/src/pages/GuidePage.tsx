@@ -8,8 +8,29 @@ import { useI18n } from "../lib/i18n";
 // Long-form guide text lives here per locale rather than in the flat i18n
 // dictionary; commands are shared and copyable.
 
-type Step = { title: string; body: string; commands?: string[] };
+/** A command line plus a one-line explanation of what it does. */
+type Cmd = string | { run: string; note: string };
+type Step = { title: string; body: string; commands?: Cmd[] };
 type Section = { title: string; description: string; steps: Step[] };
+
+/** Render `code` spans in body text; the guide is authored as plain prose. */
+function renderBody(text: string) {
+  return text.split(/(`[^`]+`)/).map((part, i) =>
+    part.startsWith("`") && part.endsWith("`") && part.length > 2 ? (
+      <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
+        {part.slice(1, -1)}
+      </code>
+    ) : (
+      part
+    ),
+  );
+}
+
+/** "3. Store variables" → ["3", "Store variables"], so the data stays readable as prose. */
+function splitNumber(title: string): [string, string] {
+  const m = /^(\d+)\.\s*(.*)$/.exec(title);
+  return m ? [m[1], m[2]] : ["", title];
+}
 
 const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults: string[][] }> = {
   en: {
@@ -22,12 +43,12 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the repository",
             body: "This puts `envfish` in ~/.cargo/bin. Re-run with --force after pulling changes.",
-            commands: ["pnpm install", "cargo install --path crates/cli --locked", "envfish --version"],
+            commands: [{ run: "pnpm install", note: "Installs the JavaScript dependencies of the desktop app." }, { run: "cargo install --path crates/cli --locked", note: "Builds the CLI and places the `envfish` binary in ~/.cargo/bin." }, { run: "envfish --version", note: "Checks that the command is on your PATH." }],
           },
           {
             title: "If the command is not found",
             body: "~/.cargo/bin is not on your PATH. Add this line to ~/.zshrc and open a new terminal.",
-            commands: ["export PATH=\"$HOME/.cargo/bin:$PATH\""],
+            commands: [{ run: "export PATH=\"$HOME/.cargo/bin:$PATH\"", note: "Adds Cargo's bin directory to your PATH. Put this line in ~/.zshrc." }],
           },
         ],
       },
@@ -39,7 +60,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "The CLI reads and writes the same data directory, so whatever you add here shows up there and vice versa.",
-            commands: ["envfish project add my-app --path ~/works/my-app", "envfish use my-app", "envfish env development --create"],
+            commands: [{ run: "envfish project add my-app --path ~/works/my-app", note: "Registers a project. --path is the local checkout, used by .gitignore and .env handling." }, { run: "envfish use my-app", note: "Makes it the current project for later commands." }, { run: "envfish env development --create", note: "Creates the environment if needed and selects it." }],
           },
         ],
       },
@@ -51,28 +72,28 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "Secrets are read from stdin so they never end up in shell history or `ps`.",
-            commands: ["envfish var set APP_URL http://localhost:3000", "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envfish var set-secret SUPABASE_KEY", "envfish import .env"],
+            commands: [{ run: "envfish var set APP_URL http://localhost:3000", note: "Stores a PUBLIC variable. The value is plain and an AI may read it." }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envfish var set-secret SUPABASE_KEY", note: "Stores a SECRET from stdin, so it never reaches your shell history or `ps`." }, { run: "envfish import .env", note: "Imports a whole .env, asking PUBLIC or SECRET per variable, and adds the file to .gitignore." }],
           },
         ],
       },
       {
         title: "4. Run your own app with everything injected",
         description: "Decrypted values go into the child process only. Do not start an AI agent this way; give it the broker instead.",
-        steps: [{ title: "Terminal", body: "ENVFISH_PROJECT and ENVFISH_ENVIRONMENT are set as well.", commands: ["envfish run pnpm dev"] }],
+        steps: [{ title: "Terminal", body: "ENVFISH_PROJECT and ENVFISH_ENVIRONMENT are set as well.", commands: [{ run: "envfish run pnpm dev", note: "Starts your command with the variables and decrypted secrets in its environment." }] }],
       },
       {
         title: "5. Describe the services an AI may use",
         description: "A connection is a base URL plus the name of the SECRET that authenticates it. The value stays in the vault.",
         steps: [
           { title: "In this app", body: "Connections → Add connection: kind (generic_http / openai / supabase / …), name, URL and the credential from the list of SECRET names in the current environment." },
-          { title: "From the terminal", body: "", commands: ["envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", "envfish connection add openai --kind openai --secret OPENAI_API_KEY"] },
+          { title: "From the terminal", body: "", commands: [{ run: "envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", note: "Defines a Supabase connection. --secret is the NAME of a stored SECRET, not its value." }, { run: "envfish connection add openai --kind openai --secret OPENAI_API_KEY", note: "Same for OpenAI; the base URL has a sensible default." }] },
         ],
       },
       {
         title: "6. Connect Claude Code (MCP)",
         description: "EnvFish runs as an MCP server. The AI gets list_* tools, call_service and supabase_select — no tool returns a secret.",
         steps: [
-          { title: "Register once", body: "Use a different --client name per tool (codex, cursor, …) so permissions and the audit log stay separate.", commands: ["claude mcp add envfish -- envfish mcp --client claude-code"] },
+          { title: "Register once", body: "Use a different --client name per tool (codex, cursor, …) so permissions and the audit log stay separate.", commands: [{ run: "claude mcp add envfish -- envfish mcp --client claude-code", note: "Registers EnvFish as an MCP server in Claude Code, under the client name claude-code." }] },
           { title: "Then ask Claude", body: "For example: “Using EnvFish, list the beans table in my-app / development.” Claude calls supabase_select; EnvFish injects the key and returns rows." },
         ],
       },
@@ -81,13 +102,13 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         description: "Every brokered call is checked against your rules. ASK pauses the AI until you approve it here (AI Access) or with `envfish ai approve <id>`.",
         steps: [
           { title: "In this app", body: "AI Access → pick client / project / environment / connection and set READ / WRITE / DELETE to ALLOW, ASK or DENY. Pending approvals appear at the top and refresh automatically." },
-          { title: "From the terminal", body: "", commands: ["envfish ai check --client claude-code --connection supabase", "envfish ai permit WRITE ALLOW --client claude-code --connection supabase", "envfish ai approvals", "envfish activity"] },
+          { title: "From the terminal", body: "", commands: [{ run: "envfish ai check --client claude-code --connection supabase", note: "Shows the effective READ / WRITE / DELETE decision for that client and connection." }, { run: "envfish ai permit WRITE ALLOW --client claude-code --connection supabase", note: "Writes a rule: this client may write to this connection without asking." }, { run: "envfish ai approvals", note: "Lists requests waiting for your decision, with their ids." }, { run: "envfish activity", note: "Shows the audit log: who called what, and whether it was allowed." }] },
         ],
       },
       {
         title: "8. Harden the vault",
         description: "By default the master key is a 0600 file next to the database. Move it into the OS keychain when you are ready.",
-        steps: [{ title: "Terminal", body: "The key is copied, read back, and only then is the file removed. Secrets need no re-encryption.", commands: ["envfish vault key-backend keychain"] }],
+        steps: [{ title: "Terminal", body: "The key is copied, read back, and only then is the file removed. Secrets need no re-encryption.", commands: [{ run: "envfish vault key-backend keychain", note: "Moves the master key from the 0600 file into the OS keychain." }] }],
       },
       {
         title: "9. Credentials for humans",
@@ -97,7 +118,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "The same records are available to the CLI, including SSH and wrapped commands that receive the credential as environment variables.",
-            commands: ["envfish cred add my-account --kind account", "envfish cred copy my-account --field password", "envfish ssh bastion", "envfish run --with-credentials -- sqlplus ..."],
+            commands: [{ run: "envfish cred add my-account --kind account", note: "Adds a test account. Username, password and TOTP seed are prompted for, hidden." }, { run: "envfish cred copy my-account --field password", note: "Copies one field to the clipboard and clears it after 30 seconds." }, { run: "envfish ssh bastion", note: "Opens SSH with the stored key, written to a 0600 temp file and deleted on exit." }, { run: "envfish run --with-credentials -- sqlplus ...", note: "Like `envfish run`, but also passes credential fields as ENVFISH_CRED_* variables." }],
           },
           { title: "What the AI sees", body: "Only names and non-secret fields, through list_credentials. There is no tool that returns a password, key or file content." },
         ],
@@ -119,12 +140,12 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "リポジトリから",
             body: "`envfish` が ~/.cargo/bin に入ります。更新時は --force を付けて入れ直してください。",
-            commands: ["pnpm install", "cargo install --path crates/cli --locked", "envfish --version"],
+            commands: [{ run: "pnpm install", note: "Desktop アプリの JavaScript 依存関係を入れます。" }, { run: "cargo install --path crates/cli --locked", note: "CLI をビルドし、`envfish` を ~/.cargo/bin に置きます。" }, { run: "envfish --version", note: "PATH が通っているかの確認です。" }],
           },
           {
             title: "コマンドが見つからない場合",
             body: "~/.cargo/bin が PATH にありません。~/.zshrc に次の行を追記し、新しいターミナルを開いてください。",
-            commands: ["export PATH=\"$HOME/.cargo/bin:$PATH\""],
+            commands: [{ run: "export PATH=\"$HOME/.cargo/bin:$PATH\"", note: "Cargo の bin を PATH に追加します。~/.zshrc に書いてください。" }],
           },
         ],
       },
@@ -136,7 +157,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "CLI とこのアプリは同じデータを読み書きするため、どちらで登録しても双方に反映されます。",
-            commands: ["envfish project add my-app --path ~/works/my-app", "envfish use my-app", "envfish env development --create"],
+            commands: [{ run: "envfish project add my-app --path ~/works/my-app", note: "プロジェクトを登録します。--path はローカルの作業ディレクトリで、.gitignore や .env の処理に使われます。" }, { run: "envfish use my-app", note: "以降のコマンドの対象プロジェクトにします。" }, { run: "envfish env development --create", note: "環境が無ければ作成し、選択します。" }],
           },
         ],
       },
@@ -148,28 +169,28 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "Secret は stdin から読み取るため、シェル履歴や ps に残りません。",
-            commands: ["envfish var set APP_URL http://localhost:3000", "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envfish var set-secret SUPABASE_KEY", "envfish import .env"],
+            commands: [{ run: "envfish var set APP_URL http://localhost:3000", note: "PUBLIC 変数を保存します。値は平文で、AI からも読めます。" }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envfish var set-secret SUPABASE_KEY", note: "SECRET を標準入力から保存します。シェル履歴や `ps` に残りません。" }, { run: "envfish import .env", note: ".env をまとめて取り込みます。変数ごとに PUBLIC / SECRET を確認し、ファイルを .gitignore に追記します。" }],
           },
         ],
       },
       {
         title: "4. 自分のアプリに注入して起動する",
         description: "復号した値は子プロセスにだけ渡ります。AI エージェント自体をこの方法で起こさず、AI には次の Broker 経由を使ってください。",
-        steps: [{ title: "ターミナル", body: "ENVFISH_PROJECT と ENVFISH_ENVIRONMENT も渡されます。", commands: ["envfish run pnpm dev"] }],
+        steps: [{ title: "ターミナル", body: "ENVFISH_PROJECT と ENVFISH_ENVIRONMENT も渡されます。", commands: [{ run: "envfish run pnpm dev", note: "変数と復号した Secret を環境変数に入れて、コマンドを起動します。" }] }],
       },
       {
         title: "5. AI に使わせるサービスを定義する",
         description: "接続 = ベース URL + 認証に使う SECRET の「名前」。値は Vault から出ません。",
         steps: [
           { title: "このアプリで", body: "「接続」→ 接続を追加: 種別 (generic_http / openai / supabase など)・名前・URL を入力し、認証情報は現在の環境の SECRET 名の一覧から選びます。" },
-          { title: "ターミナルで", body: "", commands: ["envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", "envfish connection add openai --kind openai --secret OPENAI_API_KEY"] },
+          { title: "ターミナルで", body: "", commands: [{ run: "envfish connection add supabase --kind supabase --url https://xyz.supabase.co --secret SUPABASE_KEY", note: "Supabase 接続を定義します。--secret は保存済み SECRET の「名前」で、値ではありません。" }, { run: "envfish connection add openai --kind openai --secret OPENAI_API_KEY", note: "OpenAI も同様です。ベース URL には既定値があります。" }] },
         ],
       },
       {
         title: "6. Claude Code をつなぐ (MCP)",
         description: "EnvFish は MCP サーバーとして動きます。AI に見えるのは list_* 系と call_service / supabase_select だけで、Secret を返すツールはありません。",
         steps: [
-          { title: "一度だけ登録", body: "Codex や Cursor など別ツールは --client の名前を変えて登録すると、権限と監査ログが分かれます。", commands: ["claude mcp add envfish -- envfish mcp --client claude-code"] },
+          { title: "一度だけ登録", body: "Codex や Cursor など別ツールは --client の名前を変えて登録すると、権限と監査ログが分かれます。", commands: [{ run: "claude mcp add envfish -- envfish mcp --client claude-code", note: "EnvFish を Claude Code に MCP サーバーとして登録します。クライアント名は claude-code です。" }] },
           { title: "Claude に頼む", body: "例:「EnvFish を使って my-app / development の beans テーブルを一覧して」。Claude は supabase_select を呼び、EnvFish が鍵を付けて結果だけを返します。" },
         ],
       },
@@ -178,13 +199,13 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         description: "Broker 経由の呼び出しはすべてルールで判定されます。ASK の間 AI は待機し、この画面 (AI アクセス) か `envfish ai approve <id>` で承認します。",
         steps: [
           { title: "このアプリで", body: "「AI アクセス」→ クライアント / プロジェクト / 環境 / 接続を選び、READ / WRITE / DELETE ごとに ALLOW・ASK・DENY を設定。承認待ちは画面上部に自動更新で並びます。" },
-          { title: "ターミナルで", body: "", commands: ["envfish ai check --client claude-code --connection supabase", "envfish ai permit WRITE ALLOW --client claude-code --connection supabase", "envfish ai approvals", "envfish activity"] },
+          { title: "ターミナルで", body: "", commands: [{ run: "envfish ai check --client claude-code --connection supabase", note: "そのクライアントと接続に対する READ / WRITE / DELETE の実効判定を表示します。" }, { run: "envfish ai permit WRITE ALLOW --client claude-code --connection supabase", note: "ルールを書きます。このクライアントは、この接続への書き込みを確認なしで行えます。" }, { run: "envfish ai approvals", note: "あなたの判断を待っている要求を id 付きで一覧します。" }, { run: "envfish activity", note: "監査ログです。誰が何を呼び、許可されたかが分かります。" }] },
         ],
       },
       {
         title: "8. Vault を固める",
         description: "既定ではマスターキーは DB の隣の 0600 ファイルです。準備ができたら OS のキーチェーンへ移します。",
-        steps: [{ title: "ターミナル", body: "鍵を書き込んで読み戻せることを確認してからファイルを削除します。Secret の再暗号化は不要です。", commands: ["envfish vault key-backend keychain"] }],
+        steps: [{ title: "ターミナル", body: "鍵を書き込んで読み戻せることを確認してからファイルを削除します。Secret の再暗号化は不要です。", commands: [{ run: "envfish vault key-backend keychain", note: "マスターキーを 0600 のファイルから OS のキーチェーンへ移します。" }] }],
       },
       {
         title: "9. 人が使う資格情報",
@@ -194,7 +215,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "同じレコードを CLI からも使えます。SSH 接続や、資格情報を環境変数として受け取るコマンドの起動にも対応しています。",
-            commands: ["envfish cred add my-account --kind account", "envfish cred copy my-account --field password", "envfish ssh bastion", "envfish run --with-credentials -- sqlplus ..."],
+            commands: [{ run: "envfish cred add my-account --kind account", note: "テストアカウントを追加します。ユーザー名・パスワード・TOTP シードは非表示で入力します。" }, { run: "envfish cred copy my-account --field password", note: "フィールドを 1 つクリップボードにコピーし、30 秒後に消去します。" }, { run: "envfish ssh bastion", note: "保存した鍵で SSH に接続します。鍵は 0600 の一時ファイルに書かれ、終了時に消えます。" }, { run: "envfish run --with-credentials -- sqlplus ...", note: "`envfish run` に加えて、資格情報を ENVFISH_CRED_* として渡します。" }],
           },
           { title: "AI に見えるもの", body: "list_credentials で見えるのは名前と非 Secret 項目だけです。パスワード・鍵・ファイル内容を返すツールは存在しません。" },
         ],
@@ -220,9 +241,12 @@ function CommandLine({ command, copiedLabel }: { command: string; copiedLabel: s
     }
   };
   return (
-    <div className="group flex h-8 items-center gap-2 rounded-md border border-border/60 bg-muted/40 pl-3 pr-1">
+    <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-muted/40 pl-3 pr-1">
+      <span className="select-none font-mono text-xs text-muted-foreground/60" aria-hidden>
+        $
+      </span>
       <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs">{command}</code>
-      <Button type="button" variant="ghost" size="icon-sm" className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100" onClick={copy} aria-label={copied ? copiedLabel : "copy"}>
+      <Button type="button" variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground" onClick={copy} aria-label={copied ? copiedLabel : "copy"}>
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
     </div>
@@ -232,55 +256,90 @@ function CommandLine({ command, copiedLabel }: { command: string; copiedLabel: s
 export function GuidePage() {
   const { locale, t } = useI18n();
   const guide = GUIDE[locale];
+  const sections = guide.sections.map((section) => {
+    const [number, title] = splitNumber(section.title);
+    return { ...section, number, title, id: `step-${number || title}` };
+  });
+
   return (
-    <div className="max-w-3xl">
-      <PageHeader title={guide.title} />
-
-      <div className="flex flex-col gap-10">
-        {guide.sections.map((section) => (
-          <section key={section.title}>
-            <SectionLabel>{section.title}</SectionLabel>
-            <p className="mb-3 text-sm">{section.description}</p>
-            <div className="flex flex-col divide-y divide-border/60">
-              {section.steps.map((step) => (
-                <div key={step.title} className="grid gap-2 py-3 sm:grid-cols-[140px_1fr]">
-                  <span className="font-mono text-xs text-muted-foreground">{step.title}</span>
-                  <div className="flex flex-col gap-2">
-                    {step.body && <p className="text-sm">{step.body}</p>}
-                    {step.commands?.map((c) => <CommandLine key={c} command={c} copiedLabel={t("vars.copied")} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+    <div className="flex flex-row-reverse justify-end gap-10">
+      {/* The guide is long; a jump list keeps its shape visible. */}
+      <nav className="sticky top-6 hidden h-fit w-44 shrink-0 flex-col gap-1 md:flex" aria-label={guide.title}>
+        <SectionLabel>{t("guide.contents")}</SectionLabel>
+        {sections.map((section) => (
+          <a key={section.id} href={`#${section.id}`} className="flex gap-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+            <span className="w-4 shrink-0 text-right font-mono">{section.number}</span>
+            <span className="leading-snug">{section.title}</span>
+          </a>
         ))}
+      </nav>
 
-        <section>
-          <SectionLabel>{t("ai.legend.title")}</SectionLabel>
-          <p className="mb-3 text-sm">{t("ai.legend.note")}</p>
-          <table className="text-sm">
-            <thead>
-              <tr>
-                {guide.defaults[0].map((h) => (
-                  <th key={h} className="h-8 border-b border-border/60 pr-6 text-left font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    {h}
-                  </th>
+      <div className="min-w-0 max-w-2xl">
+        <PageHeader title={guide.title} />
+
+        <div className="flex flex-col gap-12">
+          {sections.map((section) => (
+            <section key={section.id} id={section.id} className="scroll-mt-6">
+              <div className="flex items-baseline gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border font-mono text-xs text-muted-foreground" aria-hidden>
+                  {section.number}
+                </span>
+                <h2 className="font-pixel text-base leading-tight">{section.title}</h2>
+              </div>
+              <p className="mt-2 pl-9 text-sm leading-relaxed text-muted-foreground">{renderBody(section.description)}</p>
+
+              <div className="mt-4 flex flex-col gap-5 pl-9">
+                {section.steps.map((step) => (
+                  <div key={step.title}>
+                    <h3 className="text-[13px] font-medium">{step.title}</h3>
+                    {step.body && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{renderBody(step.body)}</p>}
+                    {step.commands && (
+                      <div className="mt-2 flex flex-col gap-3">
+                        {step.commands.map((c) => {
+                          const run = typeof c === "string" ? c : c.run;
+                          const note = typeof c === "string" ? null : c.note;
+                          return (
+                            <div key={run}>
+                              <CommandLine command={run} copiedLabel={t("vars.copied")} />
+                              {note && <p className="mt-1 pl-3 text-xs leading-relaxed text-muted-foreground">{renderBody(note)}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {guide.defaults.slice(1).map((row) => (
-                <tr key={row[0]} className="h-9 border-b border-border/60 last:border-0">
-                  {row.map((cell, i) => (
-                    <td key={i} className={i === 0 ? "pr-6" : "pr-6 font-mono text-xs"}>
-                      {cell}
-                    </td>
+              </div>
+            </section>
+          ))}
+
+          <section className="scroll-mt-6">
+            <h2 className="font-pixel text-base leading-tight">{t("ai.legend.title")}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("ai.legend.note")}</p>
+            <table className="mt-4 text-sm">
+              <thead>
+                <tr>
+                  {guide.defaults[0].map((h) => (
+                    <th key={h} className="h-8 border-b border-border/60 pr-6 text-left font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      {h}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+              </thead>
+              <tbody>
+                {guide.defaults.slice(1).map((row) => (
+                  <tr key={row[0]} className="h-9 border-b border-border/60 last:border-0">
+                    {row.map((cell, i) => (
+                      <td key={i} className={i === 0 ? "pr-6" : "pr-6 font-mono text-xs"}>
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </div>
       </div>
     </div>
   );
