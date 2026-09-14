@@ -16,7 +16,23 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
     title: "How to use EnvFish",
     sections: [
       {
-        title: "1. Register a project and its environments",
+        title: "1. Install the CLI",
+        description: "Once per machine. The desktop app and the CLI share the same vault, so either can be used.",
+        steps: [
+          {
+            title: "From the repository",
+            body: "This puts `envfish` in ~/.cargo/bin. Re-run with --force after pulling changes.",
+            commands: ["pnpm install", "cargo install --path crates/cli --locked", "envfish --version"],
+          },
+          {
+            title: "If the command is not found",
+            body: "~/.cargo/bin is not on your PATH. Add this line to ~/.zshrc and open a new terminal.",
+            commands: ["export PATH=\"$HOME/.cargo/bin:$PATH\""],
+          },
+        ],
+      },
+      {
+        title: "2. Register a project and its environments",
         description: "One project per client or product. Environments hold different values for development, staging and production.",
         steps: [
           { title: "In this app", body: "Projects → add a project, then open its settings (gear icon) and add environments (quick add: development / staging / production). The top bar switches between projects and environments." },
@@ -28,7 +44,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "2. Store variables and secrets",
+        title: "3. Store variables and secrets",
         description: "PUBLIC values are plain configuration an AI may see. SECRET values are encrypted before they reach SQLite and are never shown again.",
         steps: [
           { title: "In this app", body: "Variables → type into the first row and choose PUBLIC or SECRET, or paste a whole .env with “Import .env” and confirm the suggested classification." },
@@ -40,12 +56,12 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "3. Run your own app with everything injected",
+        title: "4. Run your own app with everything injected",
         description: "Decrypted values go into the child process only. Do not start an AI agent this way; give it the broker instead.",
         steps: [{ title: "Terminal", body: "ENVFISH_PROJECT and ENVFISH_ENVIRONMENT are set as well.", commands: ["envfish run pnpm dev"] }],
       },
       {
-        title: "4. Describe the services an AI may use",
+        title: "5. Describe the services an AI may use",
         description: "A connection is a base URL plus the name of the SECRET that authenticates it. The value stays in the vault.",
         steps: [
           { title: "In this app", body: "Connections → Add connection: kind (generic_http / openai / supabase / …), name, URL and the credential from the list of SECRET names in the current environment." },
@@ -53,7 +69,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "5. Connect Claude Code (MCP)",
+        title: "6. Connect Claude Code (MCP)",
         description: "EnvFish runs as an MCP server. The AI gets list_* tools, call_service and supabase_select — no tool returns a secret.",
         steps: [
           { title: "Register once", body: "Use a different --client name per tool (codex, cursor, …) so permissions and the audit log stay separate.", commands: ["claude mcp add envfish -- envfish mcp --client claude-code"] },
@@ -61,7 +77,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "6. Decide what the AI may do",
+        title: "7. Decide what the AI may do",
         description: "Every brokered call is checked against your rules. ASK pauses the AI until you approve it here (AI Access) or with `envfish ai approve <id>`.",
         steps: [
           { title: "In this app", body: "AI Access → pick client / project / environment / connection and set READ / WRITE / DELETE to ALLOW, ASK or DENY. Pending approvals appear at the top and refresh automatically." },
@@ -69,12 +85,12 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "7. Harden the vault",
+        title: "8. Harden the vault",
         description: "By default the master key is a 0600 file next to the database. Move it into the OS keychain when you are ready.",
         steps: [{ title: "Terminal", body: "The key is copied, read back, and only then is the file removed. Secrets need no re-encryption.", commands: ["envfish vault key-backend keychain"] }],
       },
       {
-        title: "8. Credentials for humans",
+        title: "9. Credentials for humans",
         description: "Test accounts, SSH targets, database logins and certificates are structured secrets for you, not for the AI. Each copy button hands the value from Rust straight to the clipboard and clears it after 30 seconds.",
         steps: [
           { title: "In this app", body: "Credentials → Add credential: choose a kind (account / ssh / database / file) and fill in the fields. Secret fields are never shown again; use Copy, or Copy code for the current TOTP." },
@@ -97,7 +113,23 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
     title: "EnvFish の使い方",
     sections: [
       {
-        title: "1. 案件と環境を登録する",
+        title: "1. CLI をインストールする",
+        description: "マシンごとに 1 回だけ。Desktop アプリと CLI は同じ Vault を読み書きするため、どちらからでも操作できます。",
+        steps: [
+          {
+            title: "リポジトリから",
+            body: "`envfish` が ~/.cargo/bin に入ります。更新時は --force を付けて入れ直してください。",
+            commands: ["pnpm install", "cargo install --path crates/cli --locked", "envfish --version"],
+          },
+          {
+            title: "コマンドが見つからない場合",
+            body: "~/.cargo/bin が PATH にありません。~/.zshrc に次の行を追記し、新しいターミナルを開いてください。",
+            commands: ["export PATH=\"$HOME/.cargo/bin:$PATH\""],
+          },
+        ],
+      },
+      {
+        title: "2. 案件と環境を登録する",
         description: "案件・プロダクトごとに 1 つのプロジェクト。環境ごとに development / staging / production の値を分けて持ちます。",
         steps: [
           { title: "このアプリで", body: "「プロジェクト」→ プロジェクトを追加 → 歯車アイコンから設定を開いて環境を追加します (development / staging / production はクイック追加)。プロジェクトと環境の切り替えは上部バーで行います。" },
@@ -109,7 +141,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "2. 変数と Secret を登録する",
+        title: "3. 変数と Secret を登録する",
         description: "PUBLIC は AI に見えてよい設定値。SECRET は SQLite に届く前に暗号化され、以後は表示されません。",
         steps: [
           { title: "このアプリで", body: "「変数」→ 先頭行に入力して PUBLIC / SECRET を選ぶか、「.env を取り込む」に貼り付けて分類の提案を確認します。" },
@@ -121,12 +153,12 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "3. 自分のアプリに注入して起動する",
+        title: "4. 自分のアプリに注入して起動する",
         description: "復号した値は子プロセスにだけ渡ります。AI エージェント自体をこの方法で起こさず、AI には次の Broker 経由を使ってください。",
         steps: [{ title: "ターミナル", body: "ENVFISH_PROJECT と ENVFISH_ENVIRONMENT も渡されます。", commands: ["envfish run pnpm dev"] }],
       },
       {
-        title: "4. AI に使わせるサービスを定義する",
+        title: "5. AI に使わせるサービスを定義する",
         description: "接続 = ベース URL + 認証に使う SECRET の「名前」。値は Vault から出ません。",
         steps: [
           { title: "このアプリで", body: "「接続」→ 接続を追加: 種別 (generic_http / openai / supabase など)・名前・URL を入力し、認証情報は現在の環境の SECRET 名の一覧から選びます。" },
@@ -134,7 +166,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "5. Claude Code をつなぐ (MCP)",
+        title: "6. Claude Code をつなぐ (MCP)",
         description: "EnvFish は MCP サーバーとして動きます。AI に見えるのは list_* 系と call_service / supabase_select だけで、Secret を返すツールはありません。",
         steps: [
           { title: "一度だけ登録", body: "Codex や Cursor など別ツールは --client の名前を変えて登録すると、権限と監査ログが分かれます。", commands: ["claude mcp add envfish -- envfish mcp --client claude-code"] },
@@ -142,7 +174,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "6. AI に許す操作を決める",
+        title: "7. AI に許す操作を決める",
         description: "Broker 経由の呼び出しはすべてルールで判定されます。ASK の間 AI は待機し、この画面 (AI アクセス) か `envfish ai approve <id>` で承認します。",
         steps: [
           { title: "このアプリで", body: "「AI アクセス」→ クライアント / プロジェクト / 環境 / 接続を選び、READ / WRITE / DELETE ごとに ALLOW・ASK・DENY を設定。承認待ちは画面上部に自動更新で並びます。" },
@@ -150,12 +182,12 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         ],
       },
       {
-        title: "7. Vault を固める",
+        title: "8. Vault を固める",
         description: "既定ではマスターキーは DB の隣の 0600 ファイルです。準備ができたら OS のキーチェーンへ移します。",
         steps: [{ title: "ターミナル", body: "鍵を書き込んで読み戻せることを確認してからファイルを削除します。Secret の再暗号化は不要です。", commands: ["envfish vault key-backend keychain"] }],
       },
       {
-        title: "8. 人が使う資格情報",
+        title: "9. 人が使う資格情報",
         description: "テストアカウント・SSH 接続先・DB ログイン・証明書は、AI ではなく人が使う構造化された Secret です。コピーボタンは Rust からクリップボードへ直接値を渡し、30 秒後に自動で消去します。",
         steps: [
           { title: "このアプリで", body: "「資格情報」→ 資格情報を追加: 種別 (account / ssh / database / file) を選んで項目を入力します。Secret 項目は以後表示されません。必要なときは「コピー」、TOTP は「コードをコピー」を使います。" },
