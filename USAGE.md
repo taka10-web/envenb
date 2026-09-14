@@ -19,23 +19,27 @@ EnvFish は、案件ごとの環境変数と Secret を **完全ローカル** �
 | pnpm | 11 以上 | |
 | Tauri 2 の前提ツール | macOS: Xcode Command Line Tools | Desktop アプリのビルドに必要。<https://v2.tauri.app/start/prerequisites/> |
 
-### ビルド
+### インストール
 
 ```bash
 git clone <このリポジトリ> envfish
 cd envfish
-pnpm install
-cargo build
-cargo test
+pnpm install                                # Desktop アプリの依存関係
+cargo install --path crates/cli --locked    # envfish コマンドを ~/.cargo/bin に入れる
+envfish --version
 ```
 
-`cargo build` で `target/debug/envfish` (CLI) が作られます。
-パスに入れておくと以降のコマンドをそのまま実行できます。
+`envfish: command not found` になる場合は `~/.cargo/bin` が PATH にありません。
+シェルの設定ファイル (`~/.zshrc` など) に次の行を追記し、新しいターミナルを開いてください。
 
 ```bash
-# 例: シンボリックリンクを置く
-ln -s "$PWD/target/debug/envfish" ~/.local/bin/envfish
+export PATH="$HOME/.cargo/bin:$PATH"
 ```
+
+更新したときは `cargo install --path crates/cli --locked --force` で入れ替えます。
+ソースを編集しながら試す場合は `cargo run -p envfish-cli -- <引数>` でも実行できます。
+
+Desktop アプリは `pnpm dev` (開発) か `pnpm desktop:build` (配布用バンドル) で起動します。
 
 ### データの保存場所
 

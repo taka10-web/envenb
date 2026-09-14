@@ -22,9 +22,9 @@ English.
 
 ```bash
 # セットアップ (Rust stable / Node 22 / pnpm 11)
-pnpm install
-cargo build
-ln -s "$PWD/target/debug/envfish" ~/.local/bin/envfish   # 任意
+pnpm install                                # Desktop アプリの依存関係
+cargo install --path crates/cli --locked    # envfish コマンドを ~/.cargo/bin に入れる
+envfish --version                           # 動作確認 (PATH に ~/.cargo/bin が必要)
 
 # 1. 案件と環境を登録
 envfish project add my-app --path ~/works/my-app
