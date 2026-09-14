@@ -1,4 +1,4 @@
--- EnvEnb Phase 1 schema.
+-- EnvFish Phase 1 schema.
 -- Secrets live in their own table which has NO plaintext column by design.
 
 CREATE TABLE projects (
