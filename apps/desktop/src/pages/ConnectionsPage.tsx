@@ -83,7 +83,7 @@ export function ConnectionsPage() {
   const { isLoading, projectId, environmentId } = useAppContext();
   const ready = !isLoading && !!projectId && !!environmentId;
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       {!ready && <PageHeader title={t("connections.title")} context />}
       <WithEnvironment>{({ projectId, environmentId }) => <EnvironmentConnections key={environmentId} projectId={projectId} environmentId={environmentId} />}</WithEnvironment>
     </div>
@@ -111,7 +111,7 @@ function EnvironmentConnections({ projectId, environmentId }: { projectId: strin
   );
 
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       <PageHeader title={t("connections.title")} context actions={addButton} />
       {conns.error && <ErrorNote error={conns.error} />}
       {remove.error && <ErrorNote error={remove.error} />}

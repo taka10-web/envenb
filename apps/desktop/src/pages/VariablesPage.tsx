@@ -18,7 +18,7 @@ import { confirmAsync } from "../lib/confirm";
 export function VariablesPage() {
   const { t } = useI18n();
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       <PageHeader title={t("vars.title")} context />
       <WithEnvironment>{({ environmentId }) => <VariableTable key={environmentId} environmentId={environmentId} />}</WithEnvironment>
     </div>
@@ -88,7 +88,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
   });
 
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       {isEmpty && showImport && <h2 className="mb-3 text-sm font-medium">{t("vars.import.emptyHeading")}</h2>}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button type="button" variant={showImport ? "secondary" : "outline"} size="sm" onClick={() => (showImport ? closeImport() : setImportOpen(true))}>

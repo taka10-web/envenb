@@ -84,7 +84,7 @@ export function CredentialsPage() {
   const { isLoading, projectId, environmentId } = useAppContext();
   const ready = !isLoading && !!projectId && !!environmentId;
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       {/* Once the context is usable the inner view owns the header (it hosts the Add button). */}
       {!ready && <PageHeader title={t("creds.title")} context />}
       <WithEnvironment>{({ projectId, environmentId }) => <EnvironmentCredentials key={environmentId} projectId={projectId} environmentId={environmentId} />}</WithEnvironment>
@@ -116,7 +116,7 @@ function EnvironmentCredentials({ projectId, environmentId }: { projectId: strin
   const loading = specs.isLoading || creds.isLoading;
 
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       <PageHeader
         title={t("creds.title")}
         context

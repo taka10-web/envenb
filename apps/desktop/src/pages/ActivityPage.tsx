@@ -25,7 +25,7 @@ export function ActivityPage() {
   const rows = audit.data;
 
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       <PageHeader title={t("activity.title")} />
       {audit.error && <ErrorNote error={audit.error} />}
       {audit.isLoading && <MaikoLoader label={t("common.loading")} className="py-16" />}

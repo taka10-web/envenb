@@ -121,10 +121,12 @@ export default function App() {
           </div>
         </nav>
       </aside>
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-y-auto">
         {/* Centred column with real top margin, so content is not pinned to the
-            window edge on a wide screen. */}
-        <div className="mx-auto w-full max-w-[920px] px-10 pb-16 pt-10">
+            window edge on a wide screen. `flex-1` lets a page that has nothing
+            to list centre its empty state in the remaining height instead of
+            hanging at a fixed offset below the header. */}
+        <div className="mx-auto flex w-full max-w-[920px] flex-1 flex-col px-10 pb-16 pt-10">
           <Routes>
             <Route path="/" element={<Navigate to="/variables" replace />} />
             <Route path="/variables" element={<VariablesPage />} />

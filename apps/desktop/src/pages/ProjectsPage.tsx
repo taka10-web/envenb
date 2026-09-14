@@ -43,7 +43,7 @@ export function ProjectsPage() {
   };
 
   return (
-    <div>
+    <div className="flex min-h-full flex-col">
       <PageHeader title={t("projects.title")} />
 
       <form

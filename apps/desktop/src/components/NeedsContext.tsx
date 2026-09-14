@@ -35,7 +35,7 @@ export function NeedsEnvironment({ projectId }: { projectId: string }) {
 export function WithEnvironment({ children }: { children: (ctx: { projectId: string; environmentId: string }) => React.ReactNode }) {
   const { t } = useI18n();
   const { isLoading, projectId, environmentId } = useAppContext();
-  if (isLoading) return <MaikoLoader label={t("common.loading")} className="py-16" />;
+  if (isLoading) return <MaikoLoader label={t("common.loading")} className="flex-1 justify-center py-16" />;
   if (!projectId) return <NeedsProject />;
   if (!environmentId) return <NeedsEnvironment projectId={projectId} />;
   return <>{children({ projectId, environmentId })}</>;
