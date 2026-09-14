@@ -116,6 +116,8 @@ const en = {
   "vars.import.skippedNames": "Skipped:",
   "vars.import.reminderTitle": "Add .env to .gitignore and consider deleting the file",
   "vars.import.reminderBody": "EnvFish now holds these values.",
+  "vars.import.gitignoreAdded": "Added {pattern} to the project's .gitignore. Consider deleting the file — EnvFish now holds these values.",
+  "vars.import.gitignoreAlready": ".gitignore already ignores this file. Consider deleting it — EnvFish now holds these values.",
   "vars.import.another": "Import another",
   "vars.import.close": "Close",
 
@@ -332,6 +334,8 @@ const ja: Record<keyof typeof en, string> = {
   "vars.import.skippedNames": "スキップ:",
   "vars.import.reminderTitle": ".env を .gitignore に追加し、ファイルの削除もご検討ください",
   "vars.import.reminderBody": "これらの値は EnvFish が保持しています。",
+  "vars.import.gitignoreAdded": "プロジェクトの .gitignore に {pattern} を追記しました。ファイルの削除も検討してください。値は EnvFish が保持しています。",
+  "vars.import.gitignoreAlready": ".gitignore は既にこのファイルを除外しています。ファイルの削除も検討してください。値は EnvFish が保持しています。",
   "vars.import.another": "別のファイルを取り込む",
   "vars.import.close": "閉じる",
 

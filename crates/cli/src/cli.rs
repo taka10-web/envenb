@@ -127,6 +127,8 @@ pub enum Command {
         yes: bool,
         #[arg(long, help = tr("Show the plan only; store nothing", "計画のみ表示し、保存しない"))]
         dry_run: bool,
+        #[arg(long, help = tr("Do not add the file to .gitignore", ".gitignore に追記しない"))]
+        no_gitignore: bool,
     },
     #[command(about = tr(
         "Write a real .env file (values included) for tools that cannot use `envfish run`. 0600, refused if git tracks the path",
@@ -137,6 +139,8 @@ pub enum Command {
         file: String,
         #[arg(long, help = tr("Overwrite an existing file", "既存ファイルを上書き"))]
         force: bool,
+        #[arg(long, help = tr("Do not add the file to .gitignore", ".gitignore に追記しない"))]
+        no_gitignore: bool,
     },
     #[command(about = tr(
         "Write a .env.example for the current environment (secrets blank)",

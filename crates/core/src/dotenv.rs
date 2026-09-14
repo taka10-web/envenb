@@ -228,3 +228,112 @@ BAD LINE
         assert!(out.contains("OPENAI_API_KEY=\n"));
     }
 }
+
+// ---------------------------------------------------------------------------
+// .gitignore maintenance
+// ---------------------------------------------------------------------------
+
+/// Outcome of [`ensure_gitignored`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct GitignoreReport {
+    /// `.gitignore` that was inspected or written.
+    pub path: String,
+    /// Patterns appended this time (empty when everything was already covered).
+    pub added: Vec<String>,
+    /// Patterns that were already present.
+    pub already: Vec<String>,
+}
+
+/// Make sure `patterns` (e.g. `.env.local`) are listed in `<repo_root>/.gitignore`,
+/// creating the file if needed. Idempotent: existing lines are respected, and a
+/// `!.env.example` exception is kept so templates stay committable.
+pub fn ensure_gitignored(repo_root: &std::path::Path, patterns: &[&str]) -> std::io::Result<GitignoreReport> {
+    let path = repo_root.join(".gitignore");
+    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    let lines: Vec<&str> = existing.lines().map(str::trim).collect();
+    let covered = |p: &str| {
+        let bare = p.trim_start_matches('/');
+        lines.iter().any(|l| {
+            let l = l.trim_start_matches('/');
+            l == bare
+                || l == format!("{bare}*")
+                || (l == ".env*" && bare.starts_with(".env"))
+                || (l == ".env.*" && bare.starts_with(".env."))
+        })
+    };
+    let mut added = Vec::new();
+    let mut already = Vec::new();
+    for p in patterns {
+        if covered(p) {
+            already.push(p.to_string());
+        } else {
+            added.push(p.to_string());
+        }
+    }
+    if !added.is_empty() {
+        let mut out = existing.clone();
+        if !out.is_empty() && !out.ends_with('\n') {
+            out.push('\n');
+        }
+        if !out.is_empty() {
+            out.push('\n');
+        }
+        out.push_str("# EnvFish: local env files (values live in the EnvFish vault)\n");
+        for p in &added {
+            out.push_str(p);
+            out.push('\n');
+        }
+        if !lines.iter().any(|l| *l == "!.env.example") {
+            out.push_str("!.env.example\n");
+        }
+        std::fs::write(&path, out)?;
+    }
+    Ok(GitignoreReport {
+        path: path.display().to_string(),
+        added,
+        already,
+    })
+}
+
+/// Repository root for `dir` (via `git rev-parse`), if it is inside a git work tree.
+pub fn git_root(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let out = std::process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!s.is_empty()).then(|| std::path::PathBuf::from(s))
+}
+
+#[cfg(test)]
+mod gitignore_tests {
+    use super::*;
+
+    #[test]
+    fn appends_once_and_keeps_example_exception() {
+        let dir = tempfile::tempdir().unwrap();
+        let r1 = ensure_gitignored(dir.path(), &[".env.local"]).unwrap();
+        assert_eq!(r1.added, vec![".env.local"]);
+        let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert!(text.contains(".env.local\n") && text.contains("!.env.example"));
+
+        let r2 = ensure_gitignored(dir.path(), &[".env.local", ".env"]).unwrap();
+        assert_eq!(r2.already, vec![".env.local"]);
+        assert_eq!(r2.added, vec![".env"]);
+        let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert_eq!(text.matches("!.env.example").count(), 1);
+        assert_eq!(text.matches(".env.local").count(), 1);
+    }
+
+    #[test]
+    fn wildcard_lines_count_as_coverage() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "node_modules\n.env*\n").unwrap();
+        let r = ensure_gitignored(dir.path(), &[".env.local"]).unwrap();
+        assert!(r.added.is_empty() && r.already == vec![".env.local"]);
+    }
+}

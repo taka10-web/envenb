@@ -33,12 +33,15 @@ const STEPS: { id: Step; label: MessageKey }[] = [
 ];
 
 export function DotenvImport({
+  projectId,
   environmentId,
   environmentName,
   existingNames = [],
   onImported,
   onClose,
 }: {
+  /** Used to update the project's .gitignore after a successful import. */
+  projectId?: string;
   environmentId: string;
   environmentName: string;
   /** Names already present in the environment; matching rows are flagged "will overwrite". */
@@ -55,6 +58,7 @@ export function DotenvImport({
   const [rows, setRows] = useState<Row[]>([]);
   const [invalid, setInvalid] = useState<number[]>([]);
   const [report, setReport] = useState<ImportReport | null>(null);
+  const [gitignore, setGitignore] = useState<{ path: string; added: string[]; already: string[] } | null | "skipped">(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pasted = useRef(false);
 
@@ -87,6 +91,15 @@ export function DotenvImport({
       setReport(r);
       setStep("done");
       onImported(r);
+      // Best effort: keep the imported file out of git. Null = no local path / not a repo.
+      if (projectId) {
+        api
+          .ensureGitignore(projectId, fileName ?? ".env")
+          .then((g) => setGitignore(g ?? "skipped"))
+          .catch(() => setGitignore("skipped"));
+      } else {
+        setGitignore("skipped");
+      }
     },
   });
 
@@ -98,6 +111,7 @@ export function DotenvImport({
     setRows([]);
     setInvalid([]);
     setReport(null);
+    setGitignore(null);
     preview.reset();
     doImport.reset();
   };
@@ -329,7 +343,13 @@ export function DotenvImport({
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div>
               <p className="font-medium">{t("vars.import.reminderTitle")}</p>
-              <p className="text-xs text-muted-foreground">{t("vars.import.reminderBody")}</p>
+              <p className="text-xs text-muted-foreground">
+                {gitignore && gitignore !== "skipped" && gitignore.added.length > 0
+                  ? t("vars.import.gitignoreAdded", { pattern: gitignore.added.join(", ") })
+                  : gitignore && gitignore !== "skipped"
+                    ? t("vars.import.gitignoreAlready")
+                    : t("vars.import.reminderBody")}
+              </p>
             </div>
           </div>
           <div className="mt-4 flex gap-2">

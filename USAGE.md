@@ -174,13 +174,13 @@ envfish export-example           # .env.example を出力 (SECRET は空欄)
 **`.env.local` はどうするか**
 
 1. 取り込む: `envfish import .env.local` (development など対象の環境を選んでから)
-2. ファイルを消す、または `.gitignore` に入れる
+2. `.gitignore` への追記は自動で行われます (`--no-gitignore` で抑止)。ファイルは消すか残すか選べます
 3. アプリは `envfish run pnpm dev` で起動する。Next.js / Vite などは `.env.local` より環境変数を優先するため挙動は変わりません
 
 ファイルしか読めないツール (エディタ拡張など) のために実値のファイルが必要なら、書き戻せます。
 
 ```bash
-envfish export-env .env.local          # 0600 で作成。git 追跡中のパスには書かない
+envfish export-env .env.local          # 0600 で作成し .gitignore に追記。git 追跡中のパスには書かない
 envfish export-env .env.local --force  # 既存ファイルを上書き
 ```
 

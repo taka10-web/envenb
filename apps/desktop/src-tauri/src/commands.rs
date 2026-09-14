@@ -502,3 +502,29 @@ pub async fn copy_credential_field(
     result.map_err(|e| format!("clipboard: {e}"))?;
     Ok(ttl.as_secs())
 }
+
+/// Add a dotenv filename to `.gitignore` of the project's local path (if it is a git repo).
+#[tauri::command]
+pub async fn ensure_gitignore(
+    state: State<'_, AppState>,
+    project_id: String,
+    filename: String,
+) -> CmdResult<Option<envfish_core::dotenv::GitignoreReport>> {
+    let project = state.core.get_project(&project_id).await.map_err(map_err)?;
+    let Some(local_path) = project.local_path else {
+        return Ok(None);
+    };
+    let dir = std::path::PathBuf::from(local_path);
+    let Some(root) = envfish_core::dotenv::git_root(&dir) else {
+        return Ok(None);
+    };
+    let name = filename.trim().trim_start_matches('/');
+    let safe = if name.is_empty() || name.contains("..") || name.contains('/') {
+        ".env"
+    } else {
+        name
+    };
+    envfish_core::dotenv::ensure_gitignored(&root, &[safe])
+        .map(Some)
+        .map_err(|e| format!("gitignore: {e}"))
+}

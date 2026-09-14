@@ -8,7 +8,7 @@ use crate::commands::Ctx;
 use crate::i18n::tr;
 use crate::output;
 
-pub async fn import(ctx: &Ctx, file: &str, yes: bool, dry_run: bool) -> anyhow::Result<()> {
+pub async fn import(ctx: &Ctx, file: &str, yes: bool, dry_run: bool, gitignore: bool) -> anyhow::Result<()> {
     let project = ctx.current_project().await?;
     let env = ctx.current_environment().await?;
     let text = std::fs::read_to_string(file)
@@ -109,15 +109,72 @@ pub async fn import(ctx: &Ctx, file: &str, yes: bool, dry_run: bool) -> anyhow::
     for s in &report.skipped {
         println!("  - {s}");
     }
+    if gitignore {
+        report_gitignore(ctx, std::path::Path::new(file));
+    }
     println!();
     println!(
         "{}",
         tr(
-            "Next: add the .env file to .gitignore and consider deleting it — EnvFish now holds these values.",
-            "次に: .env を .gitignore に追加し、削除を検討してください。値は EnvFish が保持しています。"
+            "Consider deleting the file — EnvFish now holds these values.",
+            "ファイルの削除を検討してください。値は EnvFish が保持しています。"
         )
     );
     Ok(())
+}
+
+/// Add `file` to the enclosing repository's .gitignore and say what happened.
+pub fn report_gitignore(ctx: &Ctx, file: &std::path::Path) {
+    let abs = std::fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
+    let Some(dir) = abs.parent() else { return };
+    let Some(root) = envfish_core::dotenv::git_root(dir) else {
+        if !ctx.json {
+            println!(
+                "{}",
+                tr(
+                    "(not inside a git repository; .gitignore untouched)",
+                    "(git リポジトリ外のため .gitignore は変更していません)"
+                )
+            );
+        }
+        return;
+    };
+    let rel = abs
+        .strip_prefix(&root)
+        .unwrap_or(&abs)
+        .to_string_lossy()
+        .replace('\\', "/");
+    let pattern = if rel.contains('/') { format!("/{rel}") } else { rel };
+    match envfish_core::dotenv::ensure_gitignored(&root, &[&pattern]) {
+        Ok(r) if !ctx.json => {
+            if !r.added.is_empty() {
+                println!(
+                    "{} {} → {}",
+                    tr("Added to .gitignore:", ".gitignore に追記しました:"),
+                    r.added.join(", "),
+                    r.path
+                );
+            } else {
+                println!(
+                    "{} {}",
+                    tr(
+                        ".gitignore already covers",
+                        ".gitignore は既に対象を含んでいます:"
+                    ),
+                    r.already.join(", ")
+                );
+            }
+        }
+        Ok(_) => {}
+        Err(e) if !ctx.json => println!(
+            "{} {e}",
+            tr(
+                "could not update .gitignore:",
+                ".gitignore を更新できませんでした:"
+            )
+        ),
+        Err(_) => {}
+    }
 }
 
 /// Ask the user to confirm the kind. Returns `None` to skip the variable.
@@ -170,7 +227,7 @@ pub async fn export_example(ctx: &Ctx, file: &str) -> anyhow::Result<()> {
 /// Human-initiated escape hatch for tools that only read files. Guard rails: the
 /// file is created 0600, an existing file needs --force, and a path tracked by git
 /// is refused outright.
-pub async fn export_env(ctx: &Ctx, file: &str, force: bool) -> anyhow::Result<()> {
+pub async fn export_env(ctx: &Ctx, file: &str, force: bool, gitignore: bool) -> anyhow::Result<()> {
     let project = ctx.current_project().await?;
     let env = ctx.current_environment().await?;
     let path = std::path::Path::new(file);
@@ -220,15 +277,14 @@ pub async fn export_env(ctx: &Ctx, file: &str, force: bool) -> anyhow::Result<()
     super::cred::write_private(path, &text)?;
     if !ctx.json {
         println!(
-            "{} {file} ({} {}, 0600). {}",
+            "{} {file} ({} {}, 0600)",
             tr("wrote", "出力しました:"),
             vars.len(),
-            tr("variables", "変数"),
-            tr(
-                "Make sure it is in .gitignore.",
-                ".gitignore に入っているか確認してください。"
-            )
+            tr("variables", "変数")
         );
+    }
+    if gitignore {
+        report_gitignore(ctx, path);
     }
     Ok(())
 }

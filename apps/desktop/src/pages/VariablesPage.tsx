@@ -28,7 +28,7 @@ export function VariablesPage() {
 function VariableTable({ environmentId }: { environmentId: string }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const { environment } = useAppContext();
+  const { environment, projectId } = useAppContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const vars = useQuery({ queryKey: queryKeys.variables(environmentId), queryFn: () => api.listVariables(environmentId) });
 
@@ -100,6 +100,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
       {showImport && (
         <div className="mb-5">
           <DotenvImport
+            projectId={projectId}
             environmentId={environmentId}
             environmentName={environment?.name ?? ""}
             existingNames={vars.data?.map((v) => v.name) ?? []}

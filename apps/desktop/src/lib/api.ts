@@ -122,6 +122,14 @@ export const api = {
   // activity
   listAudit: (limit = 200) => call("list_audit", z.array(AuditEntrySchema), { limit }),
 
+  /** After importing a .env: add the filename to the project's .gitignore (null when no local path / not a git repo). */
+  ensureGitignore: (projectId: string, filename: string) =>
+    call(
+      "ensure_gitignore",
+      z.object({ path: z.string(), added: z.array(z.string()), already: z.array(z.string()) }).nullable(),
+      { projectId, filename },
+    ),
+
   // credentials (accounts / ssh / database / file). Secret fields never come back.
   listCredentials: (projectId: string) => call("list_credentials", z.array(CredentialSchema), { projectId }),
   credentialFieldSpecs: () =>
