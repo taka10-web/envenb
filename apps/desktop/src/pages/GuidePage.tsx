@@ -68,11 +68,11 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         title: "3. Store variables and secrets",
         description: "PUBLIC values are plain configuration an AI may see. SECRET values are encrypted before they reach SQLite and are never shown again.",
         steps: [
-          { title: "In this app", body: "Variables → type into the first row and choose PUBLIC or SECRET, or paste a whole .env with “Import .env” and confirm the suggested classification." },
+          { title: "In this app", body: "Variables → “Add variable”, then choose PUBLIC or SECRET — or paste a whole .env with “Import .env” and confirm the suggested classification." },
           {
             title: "From the terminal",
             body: "Secrets are read from stdin so they never end up in shell history or `ps`.",
-            commands: [{ run: "envenb var set APP_URL http://localhost:3000", note: "Stores a PUBLIC variable. The value is plain and an AI may read it." }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envenb var set-secret SUPABASE_KEY", note: "Stores a SECRET from stdin, so it never reaches your shell history or `ps`." }, { run: "envenb import .env", note: "Imports a whole .env, asking PUBLIC or SECRET per variable, and adds the file to .gitignore." }],
+            commands: [{ run: "envenb var set APP_URL http://localhost:3000", note: "Stores a PUBLIC variable. The value is plain and an AI may read it." }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envenb var set-secret SUPABASE_KEY", note: "Stores a SECRET from stdin, so it never reaches your shell history or `ps`." }, { run: "envenb import .env", note: "Imports a whole .env, asking PUBLIC or SECRET per variable, and adds the file to .gitignore." }, { run: "envenb var copy SUPABASE_KEY", note: "Copies a SECRET to the clipboard when you need the value itself. Cleared after 30 seconds; never printed." }],
           },
         ],
       },
@@ -165,11 +165,11 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
         title: "3. 変数と Secret を登録する",
         description: "PUBLIC は AI に見えてよい設定値。SECRET は SQLite に届く前に暗号化され、以後は表示されません。",
         steps: [
-          { title: "このアプリで", body: "「変数」→ 先頭行に入力して PUBLIC / SECRET を選ぶか、「.env を取り込む」に貼り付けて分類の提案を確認します。" },
+          { title: "このアプリで", body: "「変数」→「変数を追加」で PUBLIC / SECRET を選んで入力するか、「.env を取り込む」に貼り付けて分類の提案を確認します。" },
           {
             title: "ターミナルで",
             body: "Secret は stdin から読み取るため、シェル履歴や ps に残りません。",
-            commands: [{ run: "envenb var set APP_URL http://localhost:3000", note: "PUBLIC 変数を保存します。値は平文で、AI からも読めます。" }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envenb var set-secret SUPABASE_KEY", note: "SECRET を標準入力から保存します。シェル履歴や `ps` に残りません。" }, { run: "envenb import .env", note: ".env をまとめて取り込みます。変数ごとに PUBLIC / SECRET を確認し、ファイルを .gitignore に追記します。" }],
+            commands: [{ run: "envenb var set APP_URL http://localhost:3000", note: "PUBLIC 変数を保存します。値は平文で、AI からも読めます。" }, { run: "printf '%s' \"$SUPABASE_SERVICE_KEY\" | envenb var set-secret SUPABASE_KEY", note: "SECRET を標準入力から保存します。シェル履歴や `ps` に残りません。" }, { run: "envenb import .env", note: ".env をまとめて取り込みます。変数ごとに PUBLIC / SECRET を確認し、ファイルを .gitignore に追記します。" }, { run: "envenb var copy SUPABASE_KEY", note: "値そのものが必要なときに、SECRET をクリップボードへコピーします。30 秒後に消去され、画面には出ません。" }],
           },
         ],
       },

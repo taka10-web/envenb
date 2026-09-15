@@ -33,7 +33,7 @@
   variants embed names and paths, never values; AEAD failures are reported as
   one opaque `Decrypt` error.
 - **Plaintext-emitting commands are human-only.** `envenb run`, `export-env`,
-  `ssh` and `cred copy` require an interactive terminal and refuse to run inside
+  `ssh`, `cred copy` and `var copy` require an interactive terminal and refuse to run inside
   known agent sessions (`CLAUDECODE`, Codex, Cursor, Gemini CLI markers). An AI
   with shell access therefore cannot call `envenb run env` to dump the vault;
   it gets the MCP broker instead. `ENVENB_ALLOW_UNATTENDED=1` opts a script

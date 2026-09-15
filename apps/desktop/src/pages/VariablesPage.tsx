@@ -9,6 +9,8 @@ import { PageHeader } from "../components/PageHeader";
 import { ErrorNote } from "../components/ErrorNote";
 import { DotenvImport } from "../components/DotenvImport";
 import { Segmented } from "../components/Segmented";
+import { Sheet } from "../components/Sheet";
+import { Field } from "../components/Field";
 import { WithEnvironment } from "../components/NeedsContext";
 import { RowActions, Table, Td, Th, Tr } from "../components/Table";
 import { useI18n } from "../lib/i18n";
@@ -32,6 +34,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const vars = useQuery({ queryKey: queryKeys.variables(environmentId), queryFn: () => api.listVariables(environmentId) });
 
+  const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
   const [kind, setKind] = useState<VariableKind>("PUBLIC");
@@ -46,6 +49,8 @@ function VariableTable({ environmentId }: { environmentId: string }) {
     onSuccess: () => {
       setName("");
       setValue("");
+      setKind("PUBLIC");
+      setAddOpen(false);
       invalidate();
     },
   });
@@ -91,6 +96,9 @@ function VariableTable({ environmentId }: { environmentId: string }) {
     <div className="flex min-h-full flex-col">
       {isEmpty && showImport && <h2 className="mb-3 text-sm font-medium">{t("vars.import.emptyHeading")}</h2>}
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
+          <Plus className="h-3.5 w-3.5" /> {t("vars.add")}
+        </Button>
         <Button type="button" variant={showImport ? "secondary" : "outline"} size="sm" onClick={() => (showImport ? closeImport() : setImportOpen(true))}>
           {showImport ? <X className="h-3.5 w-3.5" /> : <FileDown className="h-3.5 w-3.5" />} {t("vars.import.button")}
         </Button>
@@ -114,7 +122,6 @@ function VariableTable({ environmentId }: { environmentId: string }) {
         </div>
       )}
 
-      {save.error && <ErrorNote error={save.error} />}
       {changeKind.error && <ErrorNote error={changeKind.error} />}
       {remove.error && <ErrorNote error={remove.error} />}
       {vars.error && <ErrorNote error={vars.error} />}
@@ -129,52 +136,6 @@ function VariableTable({ environmentId }: { environmentId: string }) {
           </tr>
         </thead>
         <tbody>
-          {/* Inline add row */}
-          <tr className="h-10 border-b border-border/60">
-            <Td>
-              <Input
-                aria-label={t("common.name")}
-                placeholder={t("vars.namePlaceholder")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-7 border-transparent bg-transparent px-1 font-mono text-xs hover:border-border focus-visible:border-primary"
-                autoCapitalize="characters"
-              />
-            </Td>
-            <Td>
-              <Segmented
-                size="sm"
-                value={kind}
-                onChange={setKind}
-                ariaLabel={t("common.kind")}
-                options={[
-                  { value: "PUBLIC" as VariableKind, label: "PUBLIC", activeClass: "bg-emerald-600 text-white" },
-                  { value: "SECRET" as VariableKind, label: "SECRET", activeClass: "bg-amber-600 text-white" },
-                ]}
-              />
-            </Td>
-            <Td>
-              <Input
-                aria-label={t("common.value")}
-                type={kind === "SECRET" ? "password" : "text"}
-                autoComplete="off"
-                placeholder={t(kind === "SECRET" ? "vars.secretPlaceholder" : "vars.publicPlaceholder")}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && name.trim() && value) save.mutate();
-                }}
-                className="h-7 border-transparent bg-transparent px-1 font-mono text-xs hover:border-border focus-visible:border-primary"
-              />
-            </Td>
-            <Td>
-              <div className="flex justify-end">
-                <Button type="button" size="icon-sm" variant="ghost" aria-label={t("common.add")} disabled={!name.trim() || !value || save.isPending} onClick={() => save.mutate()}>
-                  {save.isPending ? <MaikoInline size={1} /> : <Plus className="h-4 w-4" />}
-                </Button>
-              </div>
-            </Td>
-          </tr>
           {vars.data?.map((v) => (
             <Tr key={v.id}>
               <Td className="font-mono text-xs">{v.name}</Td>
@@ -226,14 +187,66 @@ function VariableTable({ environmentId }: { environmentId: string }) {
           ))}
         </tbody>
       </Table>
-      {kind === "SECRET" && (
-        <p className="mt-2 flex items-start gap-1.5 font-mono text-[11px] text-muted-foreground">
-          <Lock className="mt-0.5 h-3 w-3 shrink-0" />
-          {t("vars.secretNote")}
-        </p>
-      )}
       {vars.isLoading && <MaikoLoader label={t("common.loading")} className="py-10" />}
       {isEmpty && !showImport && <p className="py-6 text-center text-sm text-muted-foreground">{t("vars.empty")}</p>}
+
+      <Sheet open={addOpen} title={t("vars.add")} onClose={() => setAddOpen(false)}>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (name.trim() && value) save.mutate();
+          }}
+        >
+          <Field label={t("common.name")} htmlFor="var-name">
+            <Input
+              id="var-name"
+              placeholder={t("vars.namePlaceholder")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="font-mono text-xs"
+              autoCapitalize="characters"
+            />
+          </Field>
+          <Field label={t("common.kind")} htmlFor="var-kind">
+            <Segmented
+              value={kind}
+              onChange={setKind}
+              ariaLabel={t("common.kind")}
+              options={[
+                { value: "PUBLIC" as VariableKind, label: "PUBLIC", activeClass: "bg-emerald-600 text-white" },
+                { value: "SECRET" as VariableKind, label: "SECRET", activeClass: "bg-amber-600 text-white" },
+              ]}
+            />
+          </Field>
+          <Field label={t("common.value")} htmlFor="var-value">
+            <Input
+              id="var-value"
+              type={kind === "SECRET" ? "password" : "text"}
+              autoComplete="off"
+              placeholder={t(kind === "SECRET" ? "vars.secretPlaceholder" : "vars.publicPlaceholder")}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="font-mono text-xs"
+            />
+          </Field>
+          {kind === "SECRET" && (
+            <p className="flex items-start gap-1.5 font-mono text-[11px] text-muted-foreground">
+              <Lock className="mt-0.5 h-3 w-3 shrink-0" />
+              {t("vars.secretNote")}
+            </p>
+          )}
+          {save.error && <ErrorNote error={save.error} />}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setAddOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" size="sm" disabled={!name.trim() || !value || save.isPending}>
+              {save.isPending ? <MaikoInline size={1} /> : <Plus className="h-3.5 w-3.5" />} {t("common.add")}
+            </Button>
+          </div>
+        </form>
+      </Sheet>
     </div>
   );
 }

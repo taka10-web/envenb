@@ -720,3 +720,50 @@ fn a_vault_whose_database_kept_the_old_filename_is_opened_in_place() {
         "a blank database was created alongside the real one"
     );
 }
+
+/// `var copy` is the only way to see a SECRET value again, so its guards carry
+/// real weight: an AI session must never reach it, a pipe must never receive
+/// the value, and a PUBLIC variable must not be routed through the clipboard.
+#[test]
+fn var_copy_is_guarded() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+    assert!(run(home, &["project", "add", "my-app"]).0);
+    assert!(run(home, &["env", "development", "--create"]).0);
+    assert!(run(home, &["var", "set", "APP_URL", "http://x"]).0);
+
+    let mut cmd = envenb(home)
+        .args(["var", "set-secret", "TOKEN"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    cmd.stdin.as_mut().unwrap().write_all(b"sk-NEEDLE").unwrap();
+    assert!(cmd.wait_with_output().unwrap().status.success());
+
+    // An AI agent session is refused before anything is decrypted.
+    let out = envenb(home)
+        .env("CLAUDECODE", "1")
+        .args(["var", "copy", "TOKEN"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("AI agent session"));
+    assert!(!err.contains("sk-NEEDLE"));
+
+    // Not a terminal: refused, and the value never reaches the pipe.
+    let out = envenb(home).args(["var", "copy", "TOKEN"]).output().unwrap();
+    assert!(!out.status.success());
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("sk-NEEDLE"));
+    assert!(!String::from_utf8_lossy(&out.stderr).contains("sk-NEEDLE"));
+
+    // A PUBLIC variable is rejected: its value is already in `var list`.
+    let out = envenb(home).args(["var", "copy", "APP_URL"]).output().unwrap();
+    assert!(!out.status.success());
+
+    // An unknown name fails without touching the vault.
+    let out = envenb(home).args(["var", "copy", "NOPE"]).output().unwrap();
+    assert!(!out.status.success());
+}

@@ -76,6 +76,7 @@ const en = {
   "envs.deleteAria": "Delete {name}",
 
   "vars.title": "Variables",
+  "vars.add": "Add variable",
   "vars.namePlaceholder": "VARIABLE_NAME",
   "vars.publicPlaceholder": "value, visible to AI agents",
   "vars.secretPlaceholder": "sealed on save, never shown again",
@@ -306,6 +307,7 @@ const ja: Record<keyof typeof en, string> = {
   "envs.deleteAria": "{name} を削除",
 
   "vars.title": "変数",
+  "vars.add": "変数を追加",
   "vars.namePlaceholder": "変数名",
   "vars.publicPlaceholder": "値 (AI からも読めます)",
   "vars.secretPlaceholder": "保存時に暗号化され、以後表示されません",

@@ -311,6 +311,14 @@ pub enum VarCommand {
         #[arg(value_name = "KIND", help = tr("PUBLIC | SECRET", "PUBLIC | SECRET"))]
         kind: String,
     },
+    #[command(about = tr(
+        "Copy a SECRET value to the clipboard (TTY only, cleared after 30 s). The value is never printed",
+        "SECRET の値をクリップボードへコピー (対話端末のみ、30 秒後に消去)。値は表示しません",
+    ))]
+    Copy {
+        #[arg(value_name = "NAME", help = tr("Variable name ([A-Za-z_][A-Za-z0-9_]*)", "変数名 ([A-Za-z_][A-Za-z0-9_]*)"))]
+        name: String,
+    },
     #[command(about = tr("Remove a variable", "変数を削除"))]
     Remove {
         #[arg(value_name = "NAME", help = tr("Variable name ([A-Za-z_][A-Za-z0-9_]*)", "変数名 ([A-Za-z_][A-Za-z0-9_]*)"))]

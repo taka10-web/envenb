@@ -81,6 +81,52 @@ pub async fn run(ctx: &Ctx, command: VarCommand) -> anyhow::Result<()> {
             );
             Ok(())
         }
+        VarCommand::Copy { name } => {
+            // Same footing as `cred copy`: a human at a real terminal, and the
+            // value goes to the clipboard rather than to the scrollback.
+            crate::human::require_human("envenb var copy")?;
+            if !std::io::stdout().is_terminal() {
+                anyhow::bail!(
+                    "{}",
+                    tr(
+                        "var copy is only available from an interactive terminal",
+                        "var copy は対話端末からのみ実行できます"
+                    )
+                );
+            }
+            let vars = ctx.app.list_variables(&env.id).await?;
+            let Some(v) = vars.iter().find(|v| v.name == name) else {
+                anyhow::bail!("{} {name}", tr("no such variable:", "そのような変数はありません:"));
+            };
+            if v.kind != VariableKind::Secret {
+                anyhow::bail!(
+                    "{} {name}",
+                    tr(
+                        "not a SECRET variable; its value is already visible in `var list`:",
+                        "SECRET ではありません。値は `var list` に表示されています:"
+                    )
+                );
+            }
+            let ttl = envenb_core::clipboard::DEFAULT_TTL;
+            ctx.app
+                .with_secret(&env.id, &name, |v| {
+                    envenb_core::clipboard::copy_then_clear(v, ttl)
+                })
+                .await?
+                .map_err(anyhow::Error::msg)?;
+            eprintln!(
+                "{} {name} {} {}s",
+                tr("Copied", "コピーしました:"),
+                tr(
+                    "to the clipboard; it will be cleared in",
+                    "クリップボードは次の秒数後に消去されます:"
+                ),
+                ttl.as_secs()
+            );
+            // Stay alive so the clearing thread can run.
+            std::thread::sleep(ttl + std::time::Duration::from_millis(200));
+            Ok(())
+        }
         VarCommand::Remove { name } => {
             ctx.app.delete_variable(&env.id, &name).await?;
             if !ctx.json {
