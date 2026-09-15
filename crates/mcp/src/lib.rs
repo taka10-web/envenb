@@ -62,6 +62,19 @@ impl McpServer {
         &self.client
     }
 
+    /// Where the SDK-facing proxy is listening, asked of the running agent so
+    /// the port is never hard-coded. Falls back to the default with a note when
+    /// the agent is not up, since the instructions are still useful then.
+    async fn proxy_url(&self) -> String {
+        let path = envenb_daemon::socket_path(self.core.paths().root());
+        match envenb_daemon::uds::request(&path, &envenb_daemon::AgentRequest::ProxyInfo).await {
+            Ok(envenb_daemon::AgentResponse::Proxy {
+                proxy_url: Some(url),
+            }) => url,
+            _ => "http://127.0.0.1:7878 (start it with `envenb agent`)".to_string(),
+        }
+    }
+
     /// Serve until stdin closes.
     pub async fn serve_stdio(&self) -> std::io::Result<()> {
         let stdin = BufReader::new(tokio::io::stdin());
@@ -170,6 +183,66 @@ impl McpServer {
                     VariableKind::Public => json!({"name": v.name, "kind": "PUBLIC", "value": v.value}),
                     VariableKind::Secret => json!({"name": v.name, "kind": "SECRET", "value": null, "note": "value withheld; use call_service"}),
                 }).collect::<Vec<_>>() }))
+            }
+            "get_connection_instructions" => {
+                let (_project, env) = self.resolve_env(args).await?;
+                let name = str_arg(args, "connection")?;
+                let conn = self.core.resolve_connection(&env.id, name).await?;
+                let language = str_arg(args, "language").unwrap_or_default().to_ascii_lowercase();
+
+                // The proxy URL is discovered, never hard-coded: the port can
+                // move when 7878 is taken.
+                let proxy_url = self.proxy_url().await;
+                let base_url_for_sdk = format!("{proxy_url}/{}", conn.name);
+
+                let mut examples = Vec::new();
+                if language.is_empty() || language.starts_with("js") || language.starts_with("ts") || language.starts_with("node") {
+                    examples.push(json!({
+                        "language": "javascript",
+                        "note": "Any SDK that accepts a base URL works the same way.",
+                        "openai_sdk": format!(
+                            "import OpenAI from 'openai';\nconst client = new OpenAI({{\n  baseURL: '{base_url_for_sdk}/v1',\n  apiKey: process.env.ENVENB_SESSION_TOKEN,  // EnvEnb session, not a provider key\n}});"
+                        ),
+                        "google_genai_sdk": format!(
+                            "import {{ GoogleGenAI }} from '@google/genai';\nconst ai = new GoogleGenAI({{\n  apiKey: process.env.ENVENB_SESSION_TOKEN,\n  httpOptions: {{ baseUrl: '{base_url_for_sdk}' }},\n}});"
+                        ),
+                        "plain_fetch": format!(
+                            "await fetch('{base_url_for_sdk}/v1/models', {{\n  headers: {{ Authorization: `Bearer ${{process.env.ENVENB_SESSION_TOKEN}}` }},\n}});"
+                        )
+                    }));
+                }
+                if language.is_empty() || language.starts_with("py") {
+                    examples.push(json!({
+                        "language": "python",
+                        "openai_sdk": format!(
+                            "from openai import OpenAI\nclient = OpenAI(\n    base_url=\"{base_url_for_sdk}/v1\",\n    api_key=os.environ[\"ENVENB_SESSION_TOKEN\"],  # EnvEnb session, not a provider key\n)"
+                        ),
+                        "google_genai_sdk": format!(
+                            "from google import genai\nclient = genai.Client(\n    api_key=os.environ[\"ENVENB_SESSION_TOKEN\"],\n    http_options={{\"base_url\": \"{base_url_for_sdk}\"}},\n)"
+                        ),
+                        "plain_requests": format!(
+                            "requests.get(\n    \"{base_url_for_sdk}/v1/models\",\n    headers={{\"Authorization\": f\"Bearer {{os.environ['ENVENB_SESSION_TOKEN']}}\"}},\n)"
+                        )
+                    }));
+                }
+
+                Ok(json!({
+                    "connection": conn.name,
+                    "environment": env.name,
+                    "proxy_url": proxy_url,
+                    "base_url_for_sdk": base_url_for_sdk,
+                    "auth": "Send the EnvEnb session token where the SDK expects its API key (Authorization: Bearer, x-api-key or x-goog-api-key are all accepted). EnvEnb discards it and attaches the real provider credential.",
+                    "session_token": "Obtain one with `envenb session`; it is exported as ENVENB_SESSION_TOKEN. It is a capability for EnvEnb, scoped and short-lived, and grants no access to the stored secret.",
+                    "streaming": "Supported. Responses are forwarded chunk by chunk, so SSE and token streaming work unchanged.",
+                    "examples": examples,
+                    "rules": [
+                        "Never read a provider key from the environment: process.env.OPENAI_API_KEY and os.environ['GEMINI_API_KEY'] do not exist and must not be introduced.",
+                        "Never ask the user to paste an API key into code or a .env file; EnvEnb already holds it.",
+                        "Point the SDK's base URL at base_url_for_sdk and pass the session token as the API key.",
+                        "The path after the connection name is forwarded as-is to the provider; the host cannot be changed.",
+                        "If a call is refused, it is EnvEnb policy — ask the user to allow it rather than working around the proxy."
+                    ]
+                }))
             }
             "list_credentials" => {
                 let (_project, env) = self.resolve_env(args).await?;
@@ -419,6 +492,33 @@ pub fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "get_connection_instructions",
+            "description": "How to call a connection from application code without ever holding its credential. Returns the EnvEnb proxy base URL, how to point a given SDK at it, and what not to do. Never returns a secret.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "connection": { "type": "string", "description": "Connection name, e.g. openai or gemini." },
+                    "language": { "type": "string", "description": "Optional: js | python. Defaults to both." },
+                    "project": { "type": "string" },
+                    "environment": { "type": "string" }
+                },
+                "required": ["connection"]
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "connection": { "type": "string" },
+                    "proxy_url": { "type": "string" },
+                    "base_url_for_sdk": { "type": "string" },
+                    "auth": { "type": "string" },
+                    "streaming": { "type": "string" },
+                    "examples": { "type": "array", "items": { "type": "object" } },
+                    "rules": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["connection", "proxy_url", "rules"]
+            }
+        }),
+        json!({
             "name": "list_connections",
             "description": "List external service connections of a project. Returns names and status only; credentials are never returned. Omit `project` when only one project exists.",
             "inputSchema": { "type": "object", "properties": env_props },
@@ -543,6 +643,61 @@ mod tests {
         ] {
             assert!(!names.iter().any(|n| n.contains(forbidden)));
         }
+    }
+
+    /// The instructions tool exists so an agent writes proxy-based code
+    /// instead of reaching for an API key. It must never become a way to read
+    /// one, and it must actively tell the agent not to look.
+    #[tokio::test]
+    async fn connection_instructions_teach_the_proxy_and_leak_nothing() {
+        let s = server().await;
+        let p = s.core.resolve_project("my-app").await.unwrap();
+        let e = s.core.create_environment(&p.id, "development").await.unwrap();
+        s.core
+            .set_secret_variable(
+                &e.id,
+                "OPENAI_API_KEY",
+                envenb_core::SecretValue::new("sk-NEEDLE-INSTRUCTIONS"),
+            )
+            .await
+            .unwrap();
+        s.core
+            .create_connection(envenb_core::NewConnection {
+                environment_id: e.id.clone(),
+                kind: envenb_core::ConnectionKind::GenericHttp,
+                name: "openai".into(),
+                base_url: Some("https://api.openai.com".into()),
+                auth_secret: Some("OPENAI_API_KEY".into()),
+                auth_style: Some("bearer".into()),
+                metadata: None,
+            })
+            .await
+            .unwrap();
+
+        let resp = s
+            .handle(json!({"jsonrpc":"2.0","id":9,"method":"tools/call","params":{
+                "name":"get_connection_instructions",
+                "arguments":{"connection":"openai","project":"my-app","environment":"development"}
+            }}))
+            .await
+            .unwrap();
+        let text = resp.to_string();
+
+        assert_eq!(resp["result"]["isError"], false, "{text}");
+        // The credential itself, and even its variable name as a thing to read,
+        // must not be offered as a way forward.
+        assert!(
+            !text.contains("sk-NEEDLE-INSTRUCTIONS"),
+            "the credential leaked into the instructions: {text}"
+        );
+        // The agent is pointed at the proxy and told what not to do.
+        assert!(text.contains("base_url_for_sdk"));
+        assert!(text.contains("/openai"));
+        assert!(text.contains("ENVENB_SESSION_TOKEN"));
+        assert!(
+            text.contains("process.env.OPENAI_API_KEY"),
+            "the rules should name the anti-pattern explicitly: {text}"
+        );
     }
 
     #[tokio::test]

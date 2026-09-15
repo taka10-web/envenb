@@ -8,6 +8,7 @@ description = "EnvEnb MCP server (stdio). Exposes metadata and brokered actions 
 [dependencies]
 envenb-core = { workspace = true }
 envenb-broker = { workspace = true }
+envenb-daemon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
