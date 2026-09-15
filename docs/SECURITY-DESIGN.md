@@ -40,12 +40,11 @@
   you run yourself back in. Metadata commands (`var list`, `status`, …) keep
   working for agents.
 - **Master key is separate from the database.** Copying `envenb.db` alone
-  yields nothing. New vaults on macOS default to the OS keychain
+  yields nothing. New vaults default to the OS keychain
   (`ENVENB_KEY_BACKEND=file` overrides, and existing `master.key` files are kept);
-  elsewhere the default is a `0600` file and `envenb vault
-  key-backend keychain` moves the key into the macOS Keychain / Windows
-  Credential Manager / Linux Secret Service (read back before the file is
-  deleted). Secrets need no re-encryption because the key bytes are unchanged.
+  `envenb vault key-backend keychain` moves a file-backed key into the macOS
+  Keychain (read back before the file is deleted). Secrets need no re-encryption
+  because the key bytes are unchanged.
 - **Desktop capabilities are minimal.** Only `core:default`; no shell, fs or
   clipboard plugins. CSP is set.
 

@@ -44,7 +44,9 @@ Broker 経由で許可された操作だけを実行させるための開発者�
 claude mcp add envenb -- envenb mcp --client claude-code
 ```
 
-**未実装**: Touch ID / Windows Hello 付きの手動 Reveal (OS 認証を組み込むまでは Reveal 自体を置かない方針)、AWS SSO / AssumeRole、Windows の名前付きパイプ、Playwright E2E。詳細は上記英語セクション参照。
+**macOS 専用**。Vault は macOS Keychain に、Local Agent は Unix ドメインソケットに依存するため、ビルド・テスト・配布はすべて macOS のみを対象としています。
+
+**未実装**: Touch ID 付きの手動 Reveal (OS 認証を組み込むまでは Reveal 自体を置かない方針)、AWS SSO / AssumeRole、Playwright E2E。詳細は上記英語セクション参照。
 
 ---
 

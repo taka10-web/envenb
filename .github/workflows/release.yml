@@ -9,6 +9,8 @@ permissions:
   contents: write
 
 jobs:
+  # macOS only: the vault uses the macOS Keychain and the Local Agent uses
+  # Unix domain sockets, so those are the only artifacts we ship.
   desktop:
     name: Desktop bundle (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
@@ -20,10 +22,6 @@ jobs:
             target: aarch64-apple-darwin
           - os: macos-13
             target: x86_64-apple-darwin
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -35,11 +33,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - name: Linux system deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config
       - run: pnpm install --frozen-lockfile
       - name: Build and upload Tauri bundle
         uses: tauri-apps/tauri-action@v0
@@ -64,27 +57,19 @@ jobs:
             target: aarch64-apple-darwin
           - os: macos-13
             target: x86_64-apple-darwin
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - name: Linux system deps
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
       - run: cargo build --release -p envenb-cli --target ${{ matrix.target }}
       - name: Package
         shell: bash
         run: |
           mkdir -p out
-          BIN=envenb; [ "${{ runner.os }}" = "Windows" ] && BIN=envenb.exe
-          cp target/${{ matrix.target }}/release/$BIN out/
-          cd out && tar czf ../envenb-${{ github.ref_name }}-${{ matrix.target }}.tar.gz $BIN
+          cp target/${{ matrix.target }}/release/envenb out/
+          cd out && tar czf ../envenb-${{ github.ref_name }}-${{ matrix.target }}.tar.gz envenb
       - uses: softprops/action-gh-release@v2
         with:
           draft: true

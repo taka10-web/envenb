@@ -36,9 +36,9 @@ pnpm dev            # Desktop app with hot reload
 ## CI and releases
 
 - `.github/workflows/ci.yml`: `cargo fmt` / `clippy -D warnings` / `cargo test`
-  on Linux and macOS, plus `pnpm typecheck` / `pnpm test` / desktop build.
+  on macOS, plus `pnpm typecheck` / `pnpm test` / desktop build.
 - `.github/workflows/release.yml`: on a `v*` tag, builds Tauri bundles
-  (macOS arm64 / x86_64, Linux, Windows) and CLI tarballs into a draft release.
+  (macOS arm64 / x86_64) and CLI tarballs into a draft release.
 
 ## Before opening a pull request
 

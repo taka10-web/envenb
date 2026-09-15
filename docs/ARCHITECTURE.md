@@ -54,7 +54,8 @@ tool, and the test suite asserts that.
 over a `0600` Unix domain socket (listing, approvals, audit, permission
 decisions — no secret-returning request). The desktop app and MCP server still
 link `envenb-core` directly today; the socket lets other local tools
-coordinate without touching SQLite. Windows named pipes are not implemented.
+coordinate without touching SQLite. EnvEnb is macOS only, so no other
+transport is provided.
 
 **desktop** has Projects (environments, variables, `.env` import,
 `.env.example` copy), Connections, AI Access (pending approvals, clients,

@@ -220,7 +220,7 @@ pre-commit フックや CI に組み込めます。
 
 ```bash
 envenb vault status
-envenb vault key-backend keychain   # macOS Keychain / Windows 資格情報 / Linux Secret Service
+envenb vault key-backend keychain   # macOS Keychain へ移す
 ```
 
 鍵を書き込んで読み戻せることを確認してから元を削除します。Secret の再暗号化は不要です。
@@ -391,11 +391,11 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 すべて 1 つのディレクトリに入ります (`ENVENB_HOME` で変更可)。
 **絶対に git にコミットしないでください。**
 
+EnvEnb は macOS 専用です。
+
 | OS | 場所 |
 |---|---|
 | macOS | `~/Library/Application Support/envenb/` |
-| Linux | `~/.local/share/envenb/` |
-| Windows | `%APPDATA%\envenb\` |
 
 | ファイル | 内容 |
 |---|---|
@@ -437,8 +437,8 @@ Claude Code などの AI は作業ディレクトリのファイルを読みま�
 | 機能 | 状態 |
 |---|---|
 | AWS SSO / AssumeRole | 未実装 (静的アクセスキーの SigV4 は対応) |
-| Secret の手動 Reveal (Touch ID / Windows Hello 付き) | 未実装 |
-| Windows の名前付きパイプ (Local Agent) | 未実装 |
+| Secret の手動 Reveal (Touch ID 付き) | 未実装 |
+| Windows / Linux 対応 | 対象外 (macOS 専用) |
 | Playwright による E2E テスト | 未実装 (Vitest の単体テストはあり) |
 
 ---

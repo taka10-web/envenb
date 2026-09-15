@@ -161,8 +161,12 @@ Working end to end: projects, environments, variables, credentials, the vault
 the permission engine with approvals, the audit log, the broker, the MCP server,
 a CLI and a desktop app.
 
-Not yet: AWS SSO and assumed roles, a Touch ID gated reveal, Windows named pipes
-for the local agent, Playwright end-to-end tests.
+**macOS only.** The vault leans on the macOS Keychain and the local agent on
+Unix domain sockets, so macOS is the only platform that is built, tested and
+shipped.
+
+Not yet: AWS SSO and assumed roles, a Touch ID gated reveal, Playwright
+end-to-end tests.
 
 ## Security
 
