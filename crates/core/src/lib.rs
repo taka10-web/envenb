@@ -28,6 +28,7 @@ mod error;
 mod model;
 mod paths;
 pub mod permission;
+pub mod session;
 mod repo;
 mod repo_ai;
 mod repo_cred;

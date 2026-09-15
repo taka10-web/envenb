@@ -1384,8 +1384,10 @@ dependencies = [
 name = "envenb-broker"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "chrono",
  "envenb-core",
+ "futures-util",
  "hex",
  "hmac 0.12.1",
  "reqwest",
@@ -1393,6 +1395,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tempfile",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
@@ -1432,10 +1435,12 @@ dependencies = [
  "hmac 0.12.1",
  "objc2",
  "objc2-foundation",
+ "rand 0.8.8",
  "secrecy",
  "serde",
  "serde_json",
  "sha1",
+ "sha2 0.10.9",
  "sqlx",
  "tempfile",
  "thiserror 2.0.20",

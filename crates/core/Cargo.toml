@@ -19,6 +19,8 @@ sqlx = { workspace = true }
 dirs = { workspace = true }
 hmac = { workspace = true }
 sha1 = "0.10"
+sha2 = { workspace = true }
+rand = { workspace = true }
 arboard = { workspace = true, optional = true }
 
 # Device-owner authentication (Touch ID / login password) before widening

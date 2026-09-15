@@ -81,8 +81,15 @@ pub struct Broker {
 impl Broker {
     pub fn new(core: Arc<EnvEnb>) -> Self {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
+            // No total timeout: a streaming completion can legitimately run for
+            // minutes. The connect timeout still bounds an unreachable host.
+            .connect_timeout(Duration::from_secs(10))
+            // Never follow a redirect: it could carry the credential to a host
+            // the connection does not name.
             .redirect(reqwest::redirect::Policy::none())
+            // Reuse TLS connections across calls so the extra hop stays cheap.
+            .pool_idle_timeout(Duration::from_secs(90))
+            .pool_max_idle_per_host(8)
             .user_agent(concat!("envenb-broker/", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("reqwest client");
@@ -290,6 +297,156 @@ fn apply_auth(
             "sigv4 is handled by the broker for {kind} connections"
         ))),
         other => Err(BrokerError::InvalidAuthStyle(other.to_string())),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Streaming proxy for existing SDKs
+// ---------------------------------------------------------------------------
+
+/// A response whose body is still arriving.
+///
+/// The status and headers are known; the body is handed back as a stream so an
+/// SSE completion reaches the caller token by token instead of after the last
+/// one.
+pub struct StreamedResponse {
+    pub status: u16,
+    /// Response headers, minus hop-by-hop ones.
+    pub headers: Vec<(String, String)>,
+    /// Body chunks, already scrubbed of the credential.
+    pub body: std::pin::Pin<Box<dyn futures_util::Stream<Item = Result<bytes::Bytes, BrokerError>> + Send>>,
+}
+
+/// Headers that belong to one hop and must not be forwarded either way.
+const HOP_BY_HOP: [&str; 8] = [
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+];
+
+impl Broker {
+    /// Call `connection` and stream the response back.
+    ///
+    /// Unlike [`Broker::call`], caller headers that carry credentials are
+    /// *dropped* rather than rejected: an SDK pointed at this proxy always
+    /// sends a placeholder `Authorization`, and failing the request would make
+    /// every SDK unusable. The real credential is attached here, after the
+    /// caller's version is gone.
+    pub async fn stream(
+        &self,
+        connection: &Connection,
+        req: &BrokerRequest,
+        body: Option<bytes::Bytes>,
+    ) -> Result<StreamedResponse, BrokerError> {
+        use futures_util::StreamExt;
+
+        let method = reqwest::Method::from_bytes(req.method.to_ascii_uppercase().as_bytes())
+            .map_err(|_| BrokerError::InvalidMethod(req.method.clone()))?;
+        // The host always comes from the connection; the caller only picks a path.
+        let url = build_url(&connection.base_url, &req.path)?;
+
+        let mut builder = self.client.request(method, url).query(&req.query);
+        for (name, value) in &req.headers {
+            let lower = name.to_ascii_lowercase();
+            // Silently discard anything that would authenticate the caller to
+            // the provider, plus hop-by-hop headers.
+            if FORBIDDEN_CALLER_HEADERS.contains(&lower.as_str()) || HOP_BY_HOP.contains(&lower.as_str()) {
+                continue;
+            }
+            let Ok(n) = reqwest::header::HeaderName::from_bytes(name.as_bytes()) else {
+                continue;
+            };
+            let Ok(v) = reqwest::header::HeaderValue::from_str(value) else {
+                continue;
+            };
+            builder = builder.header(n, v);
+        }
+        if let Some(extra) = connection.metadata.get("headers").and_then(|h| h.as_object()) {
+            for (k, v) in extra {
+                if let Some(v) = v.as_str() {
+                    builder = builder.header(k.as_str(), v);
+                }
+            }
+        }
+        if let Some(body) = body {
+            builder = builder.body(body);
+        }
+
+        // Attach the real credential, and remember it so it can be scrubbed
+        // out of whatever comes back.
+        let mut fingerprint: Option<String> = None;
+        let request = match (&connection.auth_secret, connection.auth_style.as_str()) {
+            (None, _) | (_, "none") => builder
+                .build()
+                .map_err(|e| BrokerError::Http(e.to_string()))?,
+            (Some(secret_name), style) => {
+                let style = style.to_string();
+                let kind = connection.kind;
+                let built = self
+                    .core
+                    .with_secret(&connection.environment_id, secret_name, |secret| {
+                        fingerprint = Some(secret.to_string());
+                        apply_auth(builder, &style, kind, secret)
+                    })
+                    .await?;
+                built?
+                    .build()
+                    .map_err(|e| BrokerError::Http(e.to_string()))?
+            }
+        };
+
+        let response = self.client.execute(request).await.map_err(|e| {
+            BrokerError::Http(redact_err(e.to_string(), fingerprint.as_deref()))
+        })?;
+        let status = response.status().as_u16();
+        let headers = response
+            .headers()
+            .iter()
+            .filter(|(n, _)| !HOP_BY_HOP.contains(&n.as_str().to_ascii_lowercase().as_str()))
+            .filter_map(|(n, v)| v.to_str().ok().map(|v| (n.as_str().to_string(), v.to_string())))
+            .collect();
+
+        // Scrub each chunk as it passes. A credential split across a chunk
+        // boundary is the one case this cannot catch, which is why the real
+        // guarantee is that the caller never had the secret to begin with.
+        let needle = fingerprint.clone();
+        let stream = response.bytes_stream().map(move |chunk| match chunk {
+            Ok(bytes) => Ok(match needle.as_deref() {
+                Some(n) if !n.is_empty() => scrub_chunk(bytes, n),
+                _ => bytes,
+            }),
+            Err(e) => Err(BrokerError::Http(redact_err(
+                e.to_string(),
+                needle.as_deref(),
+            ))),
+        });
+
+        if let Some(mut fp) = fingerprint {
+            // The copy held here is done; the stream closure keeps its own.
+            unsafe { fp.as_bytes_mut() }.fill(0);
+        }
+
+        Ok(StreamedResponse {
+            status,
+            headers,
+            body: Box::pin(stream),
+        })
+    }
+}
+
+/// Replace `needle` with `[REDACTED]` inside one chunk, leaving non-UTF-8
+/// chunks untouched (a binary body cannot contain the credential as text).
+fn scrub_chunk(bytes: bytes::Bytes, needle: &str) -> bytes::Bytes {
+    match std::str::from_utf8(&bytes) {
+        Ok(text) if text.contains(needle) => {
+            bytes::Bytes::from(text.replace(needle, "[REDACTED]").into_bytes())
+        }
+        _ => bytes,
     }
 }
 
