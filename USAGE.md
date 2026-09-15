@@ -21,13 +21,16 @@ AI エージェントには中身を見せずに使わせるためのツール�
 
 ### 1. インストール
 
-必要なもの: Rust stable (1.85 以上)、Node.js 22 以上、pnpm 11 以上。
-Desktop アプリも使う場合は [Tauri 2 の前提ツール](https://v2.tauri.app/start/prerequisites/)
-(macOS なら Xcode Command Line Tools)。
+**EnvEnb は macOS 専用です。** Vault が macOS Keychain を、Local Agent が
+Unix ドメインソケットを使うためです。
+
+必要なもの: [Rust](https://rustup.rs) stable (1.85 以上)。Desktop アプリも使う
+場合は Node.js 22 以上、pnpm 11 以上、Xcode Command Line Tools。
+
+**CLI**
 
 ```bash
-git clone <このリポジトリ> envenb && cd envenb
-pnpm install                                # Desktop アプリの依存関係
+git clone https://github.com/taka10-web/envenb && cd envenb
 cargo install --path crates/cli --locked    # envenb コマンドを ~/.cargo/bin へ
 envenb --version
 ```
@@ -35,6 +38,18 @@ envenb --version
 `command not found` になる場合は `~/.cargo/bin` が PATH にありません。`~/.zshrc` に
 `export PATH="$HOME/.cargo/bin:$PATH"` を追記し、新しいターミナルを開いてください。
 更新するときは同じコマンドに `--force` を付けます。
+
+**Desktop アプリ**
+
+```bash
+pnpm install
+pnpm desktop:build
+```
+
+ビルドの最後に、生成された `release/bundle/macos/EnvEnb.app` のパスが表示されます。
+これを `/Applications` にドラッグすれば、以後は通常のアプリとして起動できます。
+
+CLI と Desktop アプリは同じ Vault を読み書きするので、どちらを使っても構いません。
 
 ### 2. 案件と環境を用意する
 

@@ -59,11 +59,16 @@ agents use the MCP broker.
 
 ## Installation
 
-Requires [Rust](https://rustup.rs) stable, Node.js 22 and pnpm 11.
+**macOS only.** The vault uses the macOS Keychain and the local agent uses Unix
+domain sockets, so macOS is the only platform that is built, tested and shipped.
+
+You need [Rust](https://rustup.rs) stable. The desktop app additionally needs
+Node.js 22 and pnpm 11.
+
+### The CLI
 
 ```bash
 git clone https://github.com/taka10-web/envenb && cd envenb
-pnpm install
 cargo install --path crates/cli --locked
 envenb --version
 ```
@@ -79,7 +84,21 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 </details>
 
-The desktop app runs with `pnpm dev`, or `pnpm desktop:build` for a bundle.
+### The desktop app
+
+Build it once and drag it into your Applications folder:
+
+```bash
+pnpm install
+pnpm desktop:build
+```
+
+The last line of the build names the bundle it wrote, ending in
+`release/bundle/macos/EnvEnb.app`. Drag that into `/Applications` and open it
+like any other app.
+
+The CLI and the desktop app read and write the same vault, so it does not matter
+which one you use.
 
 ## Quick start
 

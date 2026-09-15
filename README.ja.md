@@ -1,17 +1,43 @@
 # EnvEnb (日本語)
 
-EnvEnb は、案件ごとの環境変数・Secret・(将来的に) クラウド接続を **完全ローカル**
-で管理し、Claude Code / Codex などの AI エージェントには Secret 本体を見せず、
-Broker 経由で許可された操作だけを実行させるための開発者ツールです。
+**AI は使えるが、見ることはできない。**
 
-**実装済み (MVP v0.1)**
+EnvEnb は、案件ごとの環境変数・Secret・外部サービスの認証情報を **完全ローカル**
+で管理する開発者ツールです。Claude Code / Codex などの AI エージェントには
+Secret 本体を見せず、Broker 経由で許可された操作だけを実行させます。
+
+平文の `.env` をディスクから無くすことが目的です。値は暗号化して保管し、
+アプリを起動する瞬間だけ子プロセスの環境変数として渡します。
+
+[English](README.md) · [使い方ガイド](USAGE.md) · [設計](docs/ARCHITECTURE.md)
+
+## インストール
+
+**macOS 専用です。** Vault が macOS Keychain を、Local Agent が Unix ドメイン
+ソケットを使うためです。
+
+必要なもの: [Rust](https://rustup.rs) stable。Desktop アプリも使う場合は
+Node.js 22 以上、pnpm 11 以上、Xcode Command Line Tools。
+
+```bash
+git clone https://github.com/taka10-web/envenb && cd envenb
+cargo install --path crates/cli --locked
+envenb --version
+```
+
+Desktop アプリは `pnpm install && pnpm desktop:build` でビルドし、表示された
+`release/bundle/macos/EnvEnb.app` を `/Applications` に入れてください。
+
+手順は [USAGE.md](USAGE.md) に詳しく書いてあります。
+
+## できること
 
 - Project / Environment / Variable (PUBLIC・SECRET) の管理
 - Vault: XChaCha20-Poly1305 で暗号化し SQLite に保存。`secrets` テーブルには平文カラム自体がない
-- Master Key と Vault の責務分離 (`MasterKeyProvider` trait。Phase 1 は `0600` のファイル、後続で OS Keychain)
+- Master Key と Vault の責務分離 (`MasterKeyProvider` trait。`0600` のファイル、または macOS Keychain)
 - CLI `envenb`: `project list/add/remove`、`use`、`env`、`var list/set/set-secret/remove`、`status`。`--json`、`--no-animation`。ヘルプとメッセージは日本語対応 (`ENVENB_LANG=ja` または `LANG`)。引数なしで usage を表示
 - 使い方の手順書: [USAGE.md](USAGE.md)
-- Desktop (Tauri 2 + React): Projects / Project Detail / Environments / Variables。Connections / AI Access / Activity はルートとナビだけ先行配置。**日本語・英語切り替え対応**
+- Desktop (Tauri 2 + React): 変数・資格情報・接続・AI アクセス・アクティビティ・プロジェクト。**日本語・英語切り替え対応**
 - `envenb run`: 復号した Secret を子プロセスの環境変数にだけ注入
 - `envenb var copy`: 値そのものが必要なときに SECRET をクリップボードへ (30 秒で自動消去、画面には出さない)。対話端末のみ、AI セッションでは拒否
 - `.env` Import (PUBLIC / SECRET を自動分類し、TTY では 1 件ずつ確認) と `.env.example` Export
@@ -45,10 +71,10 @@ Broker 経由で許可された操作だけを実行させるための開発者�
 claude mcp add envenb -- envenb mcp --client claude-code
 ```
 
-**macOS 専用**。Vault は macOS Keychain に、Local Agent は Unix ドメインソケットに依存するため、ビルド・テスト・配布はすべて macOS のみを対象としています。
-
 **未実装**: Touch ID 付きの手動 Reveal (OS 認証を組み込むまでは Reveal 自体を置かない方針)、AWS SSO / AssumeRole、Playwright E2E。詳細は上記英語セクション参照。
 
 ---
 
-詳しい手順は [USAGE.md](USAGE.md) にあります。
+詳しい手順は [USAGE.md](USAGE.md)、設計の詳細は
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) と
+[docs/SECURITY-DESIGN.md](docs/SECURITY-DESIGN.md) にあります。
