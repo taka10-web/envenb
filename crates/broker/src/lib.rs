@@ -11,6 +11,7 @@
 //! Permission checks and audit logging are the caller's job (see `envenb-mcp`);
 //! the broker only knows how to make the call safely.
 
+pub mod proxy;
 pub mod sigv4;
 
 use std::sync::Arc;
