@@ -340,9 +340,9 @@ impl EnvEnb {
 
     /// Change a variable's kind, keeping its current value.
     ///
-    /// PUBLIC → SECRET seals the existing value. SECRET → PUBLIC would move a
-    /// secret into a plaintext column and is refused: an AI can read PUBLIC
-    /// values, so that direction has to be a deliberate re-entry of the value.
+    /// PUBLIC → SECRET seals the existing value. SECRET → PUBLIC is refused
+    /// here because it widens access; it lives in
+    /// [`EnvEnb::reveal_secret_as_public`], behind the OS owner prompt.
     pub async fn change_variable_kind(
         &self,
         environment_id: &str,
@@ -366,6 +366,37 @@ impl EnvEnb {
             (VariableKind::Secret, VariableKind::Public) => Err(CoreError::CannotRevealSecret),
             _ => unreachable!("equal kinds handled above"),
         }
+    }
+
+    /// Turn a SECRET back into a PUBLIC variable, keeping its value.
+    ///
+    /// This widens access — the value moves into a column the desktop app and
+    /// AI agents can read — so it is gated on the device owner proving who
+    /// they are. The proof cannot be constructed without the OS prompt, so
+    /// this path cannot be reached by an agent holding the vault.
+    ///
+    /// Use it when a value was classified as secret by mistake (a publishable
+    /// key, a public URL). A value that really is secret should be deleted
+    /// instead.
+    pub async fn reveal_secret_as_public(
+        &self,
+        environment_id: &str,
+        name: &str,
+        _approval: crate::biometric::DeviceOwnerApproval,
+    ) -> Result<Variable> {
+        let current = repo::find_variable_kind(&self.pool, environment_id, name)
+            .await?
+            .ok_or_else(|| CoreError::VariableNotFound(name.to_string()))?;
+        if current.1 != VariableKind::Secret {
+            return self.find_variable(environment_id, name).await;
+        }
+        let value = self.open_secret(environment_id, name).await?;
+        let out = self
+            .set_public_variable(environment_id, name, value.expose())
+            .await?;
+        drop(value);
+        tracing::info!(name, "secret turned into a public variable after owner approval");
+        Ok(out)
     }
 }
 
@@ -529,7 +560,7 @@ mod tests {
             .unwrap();
         assert_eq!(rows.get::<i64, _>("n"), 0);
 
-        // SECRET -> PUBLIC is refused: it would move a secret into a readable column.
+        // SECRET -> PUBLIC is refused on the unauthenticated path.
         assert!(matches!(
             app.change_variable_kind(&e.id, "TOKEN", VariableKind::Public)
                 .await,
@@ -593,4 +624,34 @@ mod tests {
     fn contains_subslice(hay: &[u8], needle: &[u8]) -> bool {
         hay.windows(needle.len()).any(|w| w == needle)
     }
+    /// The owner prompt cannot run unattended, so this exercises the state
+    /// change itself: the value survives, it lands in the plaintext table, and
+    /// no ciphertext is left behind for the same name.
+    #[tokio::test]
+    async fn revealing_moves_the_value_and_leaves_no_ciphertext() {
+        let Ok(approval) = crate::biometric::DeviceOwnerApproval::prompt("run the reveal test") else {
+            // No owner present to answer the prompt (CI): nothing to assert.
+            return;
+        };
+        let app = app().await;
+        let p = app.create_project("P", None).await.unwrap();
+        let e = app.create_environment(&p.id, "dev").await.unwrap();
+        app.set_secret_variable(&e.id, "EXPO_PUBLIC_URL", SecretValue::new("https://example.test"))
+            .await
+            .unwrap();
+
+        let v = app
+            .reveal_secret_as_public(&e.id, "EXPO_PUBLIC_URL", approval)
+            .await
+            .unwrap();
+        assert_eq!(v.kind, VariableKind::Public);
+        assert_eq!(v.value.as_deref(), Some("https://example.test"));
+
+        let secrets = sqlx::query("SELECT COUNT(*) AS n FROM secrets WHERE name = 'EXPO_PUBLIC_URL'")
+            .fetch_one(app.pool())
+            .await
+            .unwrap();
+        assert_eq!(secrets.get::<i64, _>("n"), 0, "ciphertext must not survive");
+    }
+
 }

@@ -22,6 +22,7 @@
 pub mod clipboard;
 mod db;
 pub mod dotenv;
+pub mod biometric;
 pub mod env_compat;
 mod error;
 mod model;
