@@ -110,6 +110,16 @@ $ envenb run npm run dev
 `docker compose up`, a shell script of your own. Values are injected into the
 child process only. Nothing is written back to disk.
 
+When you need a secret's value yourself, it goes to the clipboard rather than to
+your scrollback:
+
+```bash
+envenb var copy OPENAI_API_KEY   # cleared after 30 s; never printed
+```
+
+Like `run`, `export-env`, `ssh` and `cred copy`, it needs an interactive
+terminal and refuses to run inside an AI agent session.
+
 ## Using EnvEnb with Claude Code
 
 Describe the service once, then register the MCP server:

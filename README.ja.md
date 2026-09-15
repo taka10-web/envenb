@@ -13,6 +13,7 @@ Broker 経由で許可された操作だけを実行させるための開発者�
 - 使い方の手順書: [USAGE.md](USAGE.md)
 - Desktop (Tauri 2 + React): Projects / Project Detail / Environments / Variables。Connections / AI Access / Activity はルートとナビだけ先行配置。**日本語・英語切り替え対応**
 - `envenb run`: 復号した Secret を子プロセスの環境変数にだけ注入
+- `envenb var copy`: 値そのものが必要なときに SECRET をクリップボードへ (30 秒で自動消去、画面には出さない)。対話端末のみ、AI セッションでは拒否
 - `.env` Import (PUBLIC / SECRET を自動分類し、TTY では 1 件ずつ確認) と `.env.example` Export
 - Connection (generic_http / openai / supabase)。認証情報は SECRET 変数の「名前」で参照
 - AI Permission Engine: クライアント × プロジェクト × 環境 × 接続 × 操作 (READ / WRITE / DELETE) で ALLOW / ASK / DENY。既定は development が READ 許可・WRITE 確認・DELETE 拒否、production が READ 確認・他は拒否
