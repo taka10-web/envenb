@@ -76,6 +76,8 @@ const en = {
   "envs.deleteAria": "Delete {name}",
 
   "vars.title": "Variables",
+  "vars.namePlaceholder": "VARIABLE_NAME",
+  "vars.publicPlaceholder": "value, visible to AI agents",
   "vars.secretPlaceholder": "sealed on save, never shown again",
   "vars.secretNote": "Secrets are encrypted in Rust before they reach SQLite. This app cannot read them back; AI agents never can.",
   "vars.empty": "No variables in this environment.",
@@ -304,6 +306,8 @@ const ja: Record<keyof typeof en, string> = {
   "envs.deleteAria": "{name} を削除",
 
   "vars.title": "変数",
+  "vars.namePlaceholder": "変数名",
+  "vars.publicPlaceholder": "値 (AI からも読めます)",
   "vars.secretPlaceholder": "保存時に暗号化され、以後表示されません",
   "vars.secretNote": "Secret は SQLite に届く前に Rust 側で暗号化されます。このアプリからも読み戻せず、AI エージェントは決して閲覧できません。",
   "vars.empty": "この環境に変数はありません。",

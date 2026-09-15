@@ -134,7 +134,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
             <Td>
               <Input
                 aria-label={t("common.name")}
-                placeholder="OPENAI_API_KEY"
+                placeholder={t("vars.namePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-7 border-transparent bg-transparent px-1 font-mono text-xs hover:border-border focus-visible:border-primary"
@@ -158,7 +158,7 @@ function VariableTable({ environmentId }: { environmentId: string }) {
                 aria-label={t("common.value")}
                 type={kind === "SECRET" ? "password" : "text"}
                 autoComplete="off"
-                placeholder={kind === "SECRET" ? t("vars.secretPlaceholder") : "http://localhost:3000"}
+                placeholder={t(kind === "SECRET" ? "vars.secretPlaceholder" : "vars.publicPlaceholder")}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => {
