@@ -13,6 +13,7 @@ path = "src/main.rs"
 envenb-core = { workspace = true, features = ["clipboard"] }
 envenb-mcp = { workspace = true }
 envenb-daemon = { workspace = true }
+envenb-broker = { workspace = true }
 tokio = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }

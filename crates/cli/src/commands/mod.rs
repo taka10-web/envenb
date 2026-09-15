@@ -9,6 +9,7 @@ mod mcp;
 mod project;
 mod run;
 mod scan;
+mod session;
 mod status;
 pub(crate) mod var;
 mod vault;
@@ -168,7 +169,8 @@ pub async fn run(args: Cli, core: envenb_core::Result<EnvEnb>) -> anyhow::Result
         Command::Ai { command } => ai::run(&ctx, command).await,
         Command::Activity { limit } => ai::activity(&ctx, limit).await,
         Command::Mcp { client, kind } => mcp::run(ctx, &client, &kind).await,
-        Command::Agent { ping } => agent::run(ctx, ping).await,
+        Command::Agent { ping, proxy_port } => agent::run(ctx, ping, proxy_port).await,
+        Command::Session { connection, ttl, client } => session::run(&ctx, connection, ttl, client).await,
         Command::Scan {
             dir,
             all_environments,

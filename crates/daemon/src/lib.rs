@@ -12,6 +12,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use envenb_core::session::{SessionScope, SessionStore};
 use envenb_core::{Action, Approval, AuditEntry, Connection, EnvEnb, Environment, Project, Variable};
 use serde::{Deserialize, Serialize};
 
@@ -48,6 +49,22 @@ pub enum AgentRequest {
         connection_id: Option<String>,
         action: Action,
     },
+    /// Mint a session token for the local HTTP proxy. Returns the token and
+    /// the base URL an SDK should be pointed at — never a provider secret.
+    IssueSession {
+        project_id: String,
+        environment_id: String,
+        /// Empty means every connection in the environment.
+        #[serde(default)]
+        connections: Vec<String>,
+        client: String,
+        ttl_seconds: u64,
+    },
+    RevokeSession {
+        token: String,
+    },
+    /// Where the proxy is listening, so callers do not hard-code a port.
+    ProxyInfo,
 }
 
 /// Adjacently tagged (`{"type": ..., "data": ...}`) so list variants serialise cleanly.
@@ -63,17 +80,45 @@ pub enum AgentResponse {
     Approval(Approval),
     Audit(Vec<AuditEntry>),
     Decision(envenb_core::Decision),
+    Session {
+        token: String,
+        /// Base URL for SDKs; append `/<connection>`.
+        proxy_url: String,
+        expires_in_seconds: u64,
+    },
+    Proxy {
+        proxy_url: Option<String>,
+    },
+    Ok,
     Error { message: String },
 }
 
 /// In-process request handler shared by the socket server and tests.
 pub struct Agent {
     core: Arc<EnvEnb>,
+    sessions: SessionStore,
+    /// Set once the HTTP proxy is listening.
+    proxy_url: Option<String>,
 }
 
 impl Agent {
     pub fn new(core: Arc<EnvEnb>) -> Self {
-        Self { core }
+        Self {
+            core,
+            sessions: SessionStore::new(),
+            proxy_url: None,
+        }
+    }
+
+    /// Share the session table with the HTTP proxy and record its address.
+    pub fn with_proxy(mut self, sessions: SessionStore, proxy_url: String) -> Self {
+        self.sessions = sessions;
+        self.proxy_url = Some(proxy_url);
+        self
+    }
+
+    pub fn sessions(&self) -> &SessionStore {
+        &self.sessions
     }
 
     pub async fn handle(&self, request: AgentRequest) -> AgentResponse {
@@ -127,6 +172,51 @@ impl Agent {
                 )
                 .await
                 .map(AgentResponse::Decision),
+            AgentRequest::IssueSession {
+                project_id,
+                environment_id,
+                connections,
+                client,
+                ttl_seconds,
+            } => {
+                // Validate the scope before minting: a token for an
+                // environment that does not exist would fail confusingly at
+                // call time instead of here.
+                match self.core.get_environment(&environment_id).await {
+                    Ok(_) => {
+                        let ttl = std::time::Duration::from_secs(
+                            ttl_seconds.clamp(60, 24 * 60 * 60),
+                        );
+                        let issued = self.sessions.issue(
+                            SessionScope {
+                                project_id,
+                                environment_id,
+                                connections,
+                                client,
+                            },
+                            ttl,
+                        );
+                        match &self.proxy_url {
+                            Some(url) => Ok(AgentResponse::Session {
+                                token: issued.token,
+                                proxy_url: url.clone(),
+                                expires_in_seconds: issued.expires_in.as_secs(),
+                            }),
+                            None => Err(envenb_core::CoreError::InvalidName(
+                                "the HTTP proxy is not running; start `envenb agent`".into(),
+                            )),
+                        }
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            AgentRequest::RevokeSession { token } => {
+                self.sessions.revoke(&token);
+                Ok(AgentResponse::Ok)
+            }
+            AgentRequest::ProxyInfo => Ok(AgentResponse::Proxy {
+                proxy_url: self.proxy_url.clone(),
+            }),
         };
         result.unwrap_or_else(|err| AgentResponse::Error {
             message: err.to_string(),

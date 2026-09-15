@@ -202,6 +202,32 @@ pub enum Command {
     Agent {
         #[arg(long, help = tr("Send a ping to a running agent and exit", "起動中の Agent に ping を送って終了"))]
         ping: bool,
+        #[arg(long, default_value_t = 7878, help = tr(
+            "Port for the SDK-facing HTTP proxy on 127.0.0.1 (0 picks a free one)",
+            "SDK 向け HTTP Proxy のポート (127.0.0.1、0 で空きポートを自動選択)",
+        ))]
+        proxy_port: u16,
+    },
+    #[command(about = tr(
+        "Print the environment an application needs to reach the EnvEnb proxy (no secrets)",
+        "アプリが EnvEnb Proxy を使うための環境変数を出力 (Secret は含みません)",
+    ))]
+    Session {
+        #[arg(long, value_name = "NAME", help = tr(
+            "Limit the session to these connections (repeatable; default: all in the environment)",
+            "この接続だけに限定する (複数指定可、既定は環境内のすべて)",
+        ))]
+        connection: Vec<String>,
+        #[arg(long, default_value_t = 43200, value_name = "SECONDS", help = tr(
+            "How long the token stays valid (60 – 86400)",
+            "トークンの有効期間 (60 〜 86400 秒)",
+        ))]
+        ttl: u64,
+        #[arg(long, default_value = "app", value_name = "NAME", help = tr(
+            "Name recorded in the audit log for calls made with this token",
+            "このトークンでの呼び出しを監査ログに記録する際の名前",
+        ))]
+        client: String,
     },
     #[command(about = tr(
         "Scan a directory for leaked secret values and tracked .env files (values are never printed)",
