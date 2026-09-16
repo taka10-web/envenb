@@ -66,13 +66,36 @@ pub struct BrokerResponse {
 }
 
 const MAX_BODY_BYTES: usize = 256 * 1024;
-const FORBIDDEN_CALLER_HEADERS: [&str; 5] = [
+/// Headers a caller must never set: they authenticate to the provider, and the
+/// broker supplies its own. This is a floor, not the whole rule — see
+/// [`carries_credentials`], which also covers whatever header *this*
+/// connection authenticates with.
+const FORBIDDEN_CALLER_HEADERS: [&str; 7] = [
     "authorization",
     "apikey",
     "cookie",
     "x-api-key",
+    "x-goog-api-key",
+    "api-key",
     "proxy-authorization",
 ];
+
+/// Whether `name` would authenticate the caller to the provider.
+///
+/// A fixed list is not enough: a connection can authenticate with any header
+/// (`auth_style = "header:x-whatever"`), and an SDK pointed at the proxy sends
+/// the session token in exactly that header. Forwarding it would hand the
+/// provider two credentials and leak the session token.
+fn carries_credentials(name: &str, connection: &Connection) -> bool {
+    let lower = name.to_ascii_lowercase();
+    if FORBIDDEN_CALLER_HEADERS.contains(&lower.as_str()) {
+        return true;
+    }
+    matches!(
+        connection.auth_style.strip_prefix("header:"),
+        Some(header) if header.eq_ignore_ascii_case(&lower)
+    )
+}
 
 pub struct Broker {
     core: Arc<EnvEnb>,
@@ -119,7 +142,10 @@ impl Broker {
 
         let mut builder = self.client.request(method, url).query(&req.query);
         for (name, value) in &req.headers {
-            if FORBIDDEN_CALLER_HEADERS.contains(&name.to_ascii_lowercase().as_str()) {
+            // The MCP path rejects rather than strips: an agent has no reason
+            // to set an auth header, so a request that does is a mistake worth
+            // surfacing.
+            if carries_credentials(name, connection) {
                 return Err(BrokerError::InvalidHeader(format!(
                     "{name} is managed by the broker"
                 )));
@@ -356,7 +382,7 @@ impl Broker {
             let lower = name.to_ascii_lowercase();
             // Silently discard anything that would authenticate the caller to
             // the provider, plus hop-by-hop headers.
-            if FORBIDDEN_CALLER_HEADERS.contains(&lower.as_str()) || HOP_BY_HOP.contains(&lower.as_str()) {
+            if carries_credentials(name, connection) || HOP_BY_HOP.contains(&lower.as_str()) {
                 continue;
             }
             let Ok(n) = reqwest::header::HeaderName::from_bytes(name.as_bytes()) else {
