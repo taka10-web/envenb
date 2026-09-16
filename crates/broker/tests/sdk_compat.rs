@@ -273,8 +273,14 @@ fn cache_dir() -> PathBuf {
     base.join("sdk-compat")
 }
 
+/// Serialises `npm install`. Two tests installing into the same directory at
+/// once leave each other with a half-written `node_modules`, which shows up as
+/// an unrelated module-resolution error.
+static NPM_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Install `packages` with npm into a cache dir. `None` when npm is unusable.
 fn node_sdk_dir(packages: &[&str]) -> Option<PathBuf> {
+    let _guard = NPM_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = cache_dir().join("node");
     std::fs::create_dir_all(&dir).ok()?;
     if !dir.join("package.json").exists() {
@@ -301,6 +307,25 @@ fn node_sdk_dir(packages: &[&str]) -> Option<PathBuf> {
             eprintln!(
                 "skipping: npm install failed: {}",
                 String::from_utf8_lossy(&out.stderr)
+            );
+            return None;
+        }
+    }
+    // An install can report success and still leave a package that node cannot
+    // resolve. Check before handing the directory to a test, so a broken cache
+    // skips rather than fails.
+    for package in packages {
+        let probe = Command::new("node")
+            .arg("--input-type=module")
+            .arg("-e")
+            .arg(format!("import('{package}')"))
+            .current_dir(&dir)
+            .output()
+            .ok()?;
+        if !probe.status.success() {
+            eprintln!(
+                "skipping: {package} is installed but not importable: {}",
+                String::from_utf8_lossy(&probe.stderr)
             );
             return None;
         }
