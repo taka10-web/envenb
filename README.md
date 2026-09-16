@@ -135,12 +135,26 @@ variables and nothing else.
 the exposure EnvEnb exists to remove. Applications reach providers through a
 local proxy instead:
 
+Describe the service once, naming the secret rather than pasting it:
+
+```console
+$ envenb connection add openai --kind generic_http \
+    --url https://api.openai.com --secret OPENAI_API_KEY --auth bearer
+```
+
+`--auth` says where the credential goes: `bearer`, `header:<Name>` (for example
+`header:x-goog-api-key`), or `query:<name>`. Check the provider's own docs —
+some offer several APIs with different schemes, and each needs its own
+connection.
+
+Then start the daemon and take a session:
+
 ```console
 $ envenb agent &                         # daemon + proxy on 127.0.0.1
 $ eval "$(envenb session)"               # ENVENB_PROXY_URL, ENVENB_SESSION_TOKEN
 ```
 
-Then point an SDK at it — no code changes beyond a base URL:
+Now point an SDK at it — no code changes beyond a base URL:
 
 ```js
 const client = new OpenAI({

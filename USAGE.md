@@ -108,7 +108,14 @@ envenb run docker compose up
 ```
 
 `run` の後ろには **任意のコマンド** が書けます。特定の言語やパッケージ
-マネージャに依存しません。値は **子プロセスの環境変数にだけ** 渡ります。`.env.local` はもう不要なので削除できます。
+マネージャに依存しません。
+
+渡るのは **PUBLIC 変数だけ** です。**SECRET は渡りません。**
+`process.env` に入れた値はそのプロセス内のコードから読み戻せるため、
+渡した時点で秘密ではなくなるからです。Secret を使う API 呼び出しは、
+次の Proxy 経由で行います。
+
+`.env.local` はもう不要なので削除できます。
 
 ```bash
 envenb import .env.local --delete   # 取り込みと同時に (確認あり)
@@ -116,6 +123,69 @@ envenb clean                        # あとからまとめて
 ```
 
 ファイル内のすべての変数が保存済みのときだけ削除され、`.env.example` には触れません。
+
+### 5. Secret を使う API を呼ぶ
+
+アプリに鍵を持たせず、EnvEnb 経由で外部 API を呼びます。
+
+```text
+アプリ → EnvEnb → 外部 API
+```
+
+まず、どのサービスをどの Secret で認証するかを登録します。**値ではなく
+名前で紐づけます。**
+
+```bash
+envenb connection add openai --kind generic_http \
+  --url https://api.openai.com --secret OPENAI_API_KEY --auth bearer
+```
+
+`--auth` は認証情報の渡し方です。
+
+| 指定 | 送られ方 |
+|---|---|
+| `bearer` | `Authorization: Bearer <値>` |
+| `header:<名前>` | 任意のヘッダ (例 `header:x-goog-api-key`) |
+| `query:<名前>` | クエリパラメータ (例 `query:key`) |
+
+**提供元のドキュメントを確認してください。** 同じサービスでも API に
+よって方式が違うことがあります (Gemini はネイティブ API が
+`x-goog-api-key`、OpenAI 互換 API が `bearer`)。その場合は接続を分けます。
+
+次に daemon を起動し、セッションを受け取ります。
+
+```bash
+envenb agent &              # daemon と Proxy (127.0.0.1)
+eval "$(envenb session)"    # ENVENB_PROXY_URL と ENVENB_SESSION_TOKEN
+```
+
+あとは SDK の baseURL を Proxy に向け、apiKey にセッショントークンを
+渡すだけです。**Provider の鍵ではありません。**
+
+```js
+const client = new OpenAI({
+  baseURL: `${process.env.ENVENB_PROXY_URL}/openai/v1`,
+  apiKey: process.env.ENVENB_SESSION_TOKEN,
+});
+```
+
+```python
+client = OpenAI(
+    base_url=f"{os.environ['ENVENB_PROXY_URL']}/openai/v1",
+    api_key=os.environ["ENVENB_SESSION_TOKEN"],
+)
+```
+
+EnvEnb がトークンを破棄し、本物の認証情報を付けて送ります。
+ストリーミングもそのまま通ります。
+
+呼び出しは `envenb activity` に記録されます。既定では
+development の WRITE は確認待ち (ASK) になるため、アプリから POST する
+場合は許可が要ります。
+
+```bash
+envenb ai permit WRITE ALLOW --connection openai
+```
 
 ---
 
