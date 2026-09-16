@@ -34,8 +34,7 @@ pub async fn run(ctx: Ctx, ping: bool, proxy_port: u16) -> anyhow::Result<()> {
             // The HTTP proxy is what applications and SDKs talk to; the socket
             // above stays for management traffic (CLI, MCP, the desktop app).
             let sessions = envenb_core::session::SessionStore::new();
-            let proxy =
-                envenb_broker::proxy::serve(core.clone(), sessions.clone(), proxy_port).await?;
+            let proxy = envenb_broker::proxy::serve(core.clone(), sessions.clone(), proxy_port).await?;
             let proxy_url = proxy.base_url();
 
             if !ctx.json {

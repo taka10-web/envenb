@@ -278,7 +278,11 @@ fn node_sdk_dir(packages: &[&str]) -> Option<PathBuf> {
     let dir = cache_dir().join("node");
     std::fs::create_dir_all(&dir).ok()?;
     if !dir.join("package.json").exists() {
-        std::fs::write(dir.join("package.json"), r#"{"name":"sdk-compat","private":true,"type":"module"}"#).ok()?;
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{"name":"sdk-compat","private":true,"type":"module"}"#,
+        )
+        .ok()?;
     }
     let missing: Vec<_> = packages
         .iter()
@@ -506,8 +510,7 @@ print("STREAM:" + text)
 print("ENVKEY:" + os.environ.get("OPENAI_API_KEY", "absent"))
 "#;
 
-    let Some(stdout) = run_script(&python, venv.parent().unwrap(), script, "openai_test.py", &h)
-    else {
+    let Some(stdout) = run_script(&python, venv.parent().unwrap(), script, "openai_test.py", &h) else {
         return;
     };
 

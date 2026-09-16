@@ -50,11 +50,7 @@ impl Proxy {
 ///
 /// Passing `0` asks the OS for a free port, which is how a conflict on the
 /// default port is escaped; callers learn the real one from [`Proxy::addr`].
-pub async fn serve(
-    core: Arc<EnvEnb>,
-    sessions: SessionStore,
-    port: u16,
-) -> std::io::Result<Proxy> {
+pub async fn serve(core: Arc<EnvEnb>, sessions: SessionStore, port: u16) -> std::io::Result<Proxy> {
     // Loopback only. Binding 0.0.0.0 would expose every stored credential to
     // anything that can reach this machine.
     let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, port))).await?;
@@ -75,9 +71,8 @@ pub async fn serve(
             let sessions = sessions.clone();
             tokio::spawn(async move {
                 let io = TokioIo::new(stream);
-                let service = service_fn(move |req| {
-                    handle(req, broker.clone(), core.clone(), sessions.clone())
-                });
+                let service =
+                    service_fn(move |req| handle(req, broker.clone(), core.clone(), sessions.clone()));
                 let _ = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
                     .serve_connection(io, service)
                     .await;
@@ -106,7 +101,10 @@ fn error(status: StatusCode, message: &str) -> Response<ProxyBody> {
 fn caller_token(req: &Request<Incoming>) -> Option<String> {
     let headers = req.headers();
     if let Some(v) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
-        let t = v.strip_prefix("Bearer ").or_else(|| v.strip_prefix("bearer ")).unwrap_or(v);
+        let t = v
+            .strip_prefix("Bearer ")
+            .or_else(|| v.strip_prefix("bearer "))
+            .unwrap_or(v);
         if !t.is_empty() {
             return Some(t.to_string());
         }
@@ -214,9 +212,7 @@ async fn route(
             let _ = core.record_audit(audit("DENIED")).await;
             return Err((
                 StatusCode::FORBIDDEN,
-                format!(
-                    "{decision:?} by EnvEnb policy for {summary} on {connection_name}"
-                ),
+                format!("{decision:?} by EnvEnb policy for {summary} on {connection_name}"),
             ));
         }
     }
@@ -228,7 +224,12 @@ async fn route(
             url_pairs(q)
                 // A caller-supplied key would be replaced anyway; drop it so it
                 // cannot reach the provider even if auth is `none`.
-                .filter(|(k, _)| !matches!(k.to_ascii_lowercase().as_str(), "key" | "api_key" | "apikey" | "access_token"))
+                .filter(|(k, _)| {
+                    !matches!(
+                        k.to_ascii_lowercase().as_str(),
+                        "key" | "api_key" | "apikey" | "access_token"
+                    )
+                })
                 .collect()
         })
         .unwrap_or_default();
@@ -257,11 +258,7 @@ async fn route(
     };
 
     let streamed = broker
-        .stream(
-            &connection,
-            &broker_request,
-            (!body.is_empty()).then_some(body),
-        )
+        .stream(&connection, &broker_request, (!body.is_empty()).then_some(body))
         .await
         .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
 
@@ -273,9 +270,8 @@ async fn route(
         }))
         .await;
 
-    let mut builder = Response::builder().status(
-        StatusCode::from_u16(streamed.status).unwrap_or(StatusCode::BAD_GATEWAY),
-    );
+    let mut builder =
+        Response::builder().status(StatusCode::from_u16(streamed.status).unwrap_or(StatusCode::BAD_GATEWAY));
     for (name, value) in &streamed.headers {
         // Redaction changes the body length, so the upstream's own framing
         // headers would be wrong. Let hyper frame the response it actually
@@ -291,9 +287,9 @@ async fn route(
 
     // Each chunk is forwarded as it arrives; nothing waits for the last one.
     let stream = futures_util::StreamExt::map(streamed.body, |chunk| {
-        Ok::<_, Infallible>(Frame::data(chunk.unwrap_or_else(|e| {
-            Bytes::from(format!("\n[envenb] upstream error: {e}\n"))
-        })))
+        Ok::<_, Infallible>(Frame::data(
+            chunk.unwrap_or_else(|e| Bytes::from(format!("\n[envenb] upstream error: {e}\n"))),
+        ))
     });
     builder
         .body(StreamBody::new(stream).boxed_unsync())
@@ -314,18 +310,16 @@ fn percent_decode(s: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         match bytes[i] {
-            b'%' if i + 2 < bytes.len() => {
-                match u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                    Ok(b) => {
-                        out.push(b);
-                        i += 3;
-                    }
-                    Err(_) => {
-                        out.push(bytes[i]);
-                        i += 1;
-                    }
+            b'%' if i + 2 < bytes.len() => match u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                Ok(b) => {
+                    out.push(b);
+                    i += 3;
                 }
-            }
+                Err(_) => {
+                    out.push(bytes[i]);
+                    i += 1;
+                }
+            },
             b'+' => {
                 out.push(b' ');
                 i += 1;

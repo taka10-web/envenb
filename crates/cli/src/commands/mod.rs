@@ -145,9 +145,7 @@ pub async fn run(args: Cli, core: envenb_core::Result<EnvEnb>) -> anyhow::Result
         Command::Use { project } => project::use_project(&mut ctx, &project).await,
         Command::Env(env_args) => env::run(&mut ctx, env_args).await,
         Command::Var { command } => var::run(&ctx, command).await,
-        Command::Run {
-            command,
-        } => run::run(&ctx, command).await,
+        Command::Run { command } => run::run(&ctx, command).await,
         Command::Cred { command } => cred::run(&ctx, command).await,
         Command::Ssh { name, args } => cred::ssh(&ctx, &name, args).await,
         Command::Import {
@@ -169,7 +167,11 @@ pub async fn run(args: Cli, core: envenb_core::Result<EnvEnb>) -> anyhow::Result
         Command::Activity { limit } => ai::activity(&ctx, limit).await,
         Command::Mcp { client, kind } => mcp::run(ctx, &client, &kind).await,
         Command::Agent { ping, proxy_port } => agent::run(ctx, ping, proxy_port).await,
-        Command::Session { connection, ttl, client } => session::run(&ctx, connection, ttl, client).await,
+        Command::Session {
+            connection,
+            ttl,
+            client,
+        } => session::run(&ctx, connection, ttl, client).await,
         Command::Scan {
             dir,
             all_environments,

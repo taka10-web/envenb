@@ -12,9 +12,9 @@
 /// anything but `Ok` as "not authorised".
 #[cfg(target_os = "macos")]
 pub fn authenticate(reason: &str) -> Result<(), String> {
+    use objc2::msg_send;
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2::msg_send;
     use objc2_foundation::NSString;
     use std::sync::mpsc;
 
@@ -65,7 +65,6 @@ pub fn authenticate(reason: &str) -> Result<(), String> {
 pub fn authenticate(_reason: &str) -> Result<(), String> {
     Err("device owner authentication is only available on macOS".into())
 }
-
 
 /// Proof that the device owner approved a specific action.
 ///

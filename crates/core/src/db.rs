@@ -56,9 +56,18 @@ mod tests {
             })
             .collect();
         let expected = [
-            (1, "cca0b83af4fd598f3cbd99fdd9b68995c0db57abdac2bb3fa72dfa8b47855081e5ad16ad763506c1955412b3b7edb749"),
-            (2, "3e122f18c41ecba9a3634cb5e07760b6c02f5f4b2b775105aef6702cd46dcdee3ec0ca4a641f01d100047e156a8879f6"),
-            (3, "a7d046d64f66ccbb3cf9cb01e5a1fa33a01aa73021b7c073ef8651d27f2d95a25d1088229afd66b60a78233691fe3e05"),
+            (
+                1,
+                "cca0b83af4fd598f3cbd99fdd9b68995c0db57abdac2bb3fa72dfa8b47855081e5ad16ad763506c1955412b3b7edb749",
+            ),
+            (
+                2,
+                "3e122f18c41ecba9a3634cb5e07760b6c02f5f4b2b775105aef6702cd46dcdee3ec0ca4a641f01d100047e156a8879f6",
+            ),
+            (
+                3,
+                "a7d046d64f66ccbb3cf9cb01e5a1fa33a01aa73021b7c073ef8651d27f2d95a25d1088229afd66b60a78233691fe3e05",
+            ),
         ];
         assert_eq!(actual.len(), expected.len(), "a migration was added or removed");
         for ((version, got), (want_version, want)) in actual.iter().zip(expected) {

@@ -71,7 +71,9 @@ pub enum AgentRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
 pub enum AgentResponse {
-    Pong { version: String },
+    Pong {
+        version: String,
+    },
     Projects(Vec<Project>),
     Environments(Vec<Environment>),
     Variables(Vec<Variable>),
@@ -90,7 +92,9 @@ pub enum AgentResponse {
         proxy_url: Option<String>,
     },
     Ok,
-    Error { message: String },
+    Error {
+        message: String,
+    },
 }
 
 /// In-process request handler shared by the socket server and tests.
@@ -184,9 +188,7 @@ impl Agent {
                 // call time instead of here.
                 match self.core.get_environment(&environment_id).await {
                     Ok(_) => {
-                        let ttl = std::time::Duration::from_secs(
-                            ttl_seconds.clamp(60, 24 * 60 * 60),
-                        );
+                        let ttl = std::time::Duration::from_secs(ttl_seconds.clamp(60, 24 * 60 * 60));
                         let issued = self.sessions.issue(
                             SessionScope {
                                 project_id,

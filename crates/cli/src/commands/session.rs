@@ -4,7 +4,7 @@
 //! application points its SDK at the URL and passes the token where the API key
 //! used to go; EnvEnb attaches the real credential on the way out.
 
-use envenb_daemon::{socket_path, AgentRequest, AgentResponse};
+use envenb_daemon::{AgentRequest, AgentResponse, socket_path};
 
 use crate::commands::Ctx;
 use crate::i18n::tr;
@@ -28,8 +28,14 @@ pub async fn run(ctx: &Ctx, connections: Vec<String>, ttl: u64, client: String) 
     .map_err(|e| {
         anyhow::anyhow!(
             "{}: {e}. {}",
-            tr("could not reach the EnvEnb agent", "EnvEnb Agent に接続できません"),
-            tr("Start it with `envenb agent`.", "`envenb agent` で起動してください。")
+            tr(
+                "could not reach the EnvEnb agent",
+                "EnvEnb Agent に接続できません"
+            ),
+            tr(
+                "Start it with `envenb agent`.",
+                "`envenb agent` で起動してください。"
+            )
         )
     })?;
 
@@ -85,9 +91,6 @@ pub async fn run(ctx: &Ctx, connections: Vec<String>, ttl: u64, client: String) 
             "SDK の apiKey にはこのトークンを渡します。Provider の鍵ではありません"
         )
     );
-    println!(
-        "# {} {expires_in_seconds}s",
-        tr("Valid for", "有効期間:")
-    );
+    println!("# {} {expires_in_seconds}s", tr("Valid for", "有効期間:"));
     Ok(())
 }

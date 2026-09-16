@@ -11,8 +11,8 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use envenb_broker::{Broker, BrokerRequest};
-use envenb_core::{EnvEnb, NewConnection, SecretValue};
 use envenb_core::vault::FileMasterKeyProvider;
+use envenb_core::{EnvEnb, NewConnection, SecretValue};
 use futures_util::StreamExt;
 
 /// What the mock upstream saw, so a test can assert on the request it received.

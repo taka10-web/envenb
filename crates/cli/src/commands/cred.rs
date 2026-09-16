@@ -188,9 +188,7 @@ pub async fn run(ctx: &Ctx, command: CredCommand) -> anyhow::Result<()> {
                     );
                 }
                 ctx.app
-                    .with_credential_field(&c.id, &field, |v| {
-                        envenb_core::clipboard::copy_then_clear(v, ttl)
-                    })
+                    .with_credential_field(&c.id, &field, |v| envenb_core::clipboard::copy_then_clear(v, ttl))
                     .await?
                     .map_err(anyhow::Error::msg)?;
             }

@@ -39,10 +39,7 @@ impl Paths {
         if !root.exists() {
             let legacy = base.join(Self::LEGACY_DIR);
             if legacy.is_dir() {
-                std::fs::rename(&legacy, &root).map_err(|source| CoreError::Io {
-                    path: legacy,
-                    source,
-                })?;
+                std::fs::rename(&legacy, &root).map_err(|source| CoreError::Io { path: legacy, source })?;
             }
         }
         Ok(Self::at(root))

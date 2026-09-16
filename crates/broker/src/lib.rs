@@ -408,9 +408,7 @@ impl Broker {
         // out of whatever comes back.
         let mut fingerprint: Option<String> = None;
         let request = match (&connection.auth_secret, connection.auth_style.as_str()) {
-            (None, _) | (_, "none") => builder
-                .build()
-                .map_err(|e| BrokerError::Http(e.to_string()))?,
+            (None, _) | (_, "none") => builder.build().map_err(|e| BrokerError::Http(e.to_string()))?,
             (Some(secret_name), style) => {
                 let style = style.to_string();
                 let kind = connection.kind;
@@ -421,15 +419,15 @@ impl Broker {
                         apply_auth(builder, &style, kind, secret)
                     })
                     .await?;
-                built?
-                    .build()
-                    .map_err(|e| BrokerError::Http(e.to_string()))?
+                built?.build().map_err(|e| BrokerError::Http(e.to_string()))?
             }
         };
 
-        let response = self.client.execute(request).await.map_err(|e| {
-            BrokerError::Http(redact_err(e.to_string(), fingerprint.as_deref()))
-        })?;
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .map_err(|e| BrokerError::Http(redact_err(e.to_string(), fingerprint.as_deref())))?;
         let status = response.status().as_u16();
         let headers = response
             .headers()
@@ -447,10 +445,7 @@ impl Broker {
                 Some(n) if !n.is_empty() => scrub_chunk(bytes, n),
                 _ => bytes,
             }),
-            Err(e) => Err(BrokerError::Http(redact_err(
-                e.to_string(),
-                needle.as_deref(),
-            ))),
+            Err(e) => Err(BrokerError::Http(redact_err(e.to_string(), needle.as_deref()))),
         });
 
         if let Some(mut fp) = fingerprint {

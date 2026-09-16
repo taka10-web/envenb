@@ -452,10 +452,7 @@ fn credentials_store_copy_guard_and_run_injection() {
 
     // There is no flag that hands credentials to a child process. The option
     // existed once; removing it is the point, so its absence is asserted.
-    let (ok, _, err) = run(
-        home,
-        &["run", "--with-credentials", "--", "sh", "-c", "true"],
-    );
+    let (ok, _, err) = run(home, &["run", "--with-credentials", "--", "sh", "-c", "true"]);
     assert!(
         !ok && err.contains("--with-credentials"),
         "--with-credentials must not exist: {err}"
@@ -729,7 +726,10 @@ fn a_vault_whose_database_kept_the_old_filename_is_opened_in_place() {
 
     // Create a vault, then put its database back under the pre-rename name,
     // exactly as an upgraded installation would find it.
-    let (ok, _, err) = run(home, &["project", "add", "my-app", "--path", home.to_str().unwrap()]);
+    let (ok, _, err) = run(
+        home,
+        &["project", "add", "my-app", "--path", home.to_str().unwrap()],
+    );
     assert!(ok, "setup failed: {err}");
     for suffix in ["", "-wal", "-shm"] {
         let new = home.join(format!("envenb.db{suffix}"));

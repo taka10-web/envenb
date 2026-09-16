@@ -653,5 +653,4 @@ mod tests {
             .unwrap();
         assert_eq!(secrets.get::<i64, _>("n"), 0, "ciphertext must not survive");
     }
-
 }

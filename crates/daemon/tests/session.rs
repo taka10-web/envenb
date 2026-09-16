@@ -109,16 +109,13 @@ async fn revoking_stops_a_token_working() {
     let sessions = envenb_core::session::SessionStore::new();
     let agent = Agent::new(app).with_proxy(sessions.clone(), "http://127.0.0.1:7878".into());
 
-    let AgentResponse::Session { token, .. } = agent.handle(issue(&project_id, &environment_id)).await
-    else {
+    let AgentResponse::Session { token, .. } = agent.handle(issue(&project_id, &environment_id)).await else {
         panic!("expected a session");
     };
     assert!(sessions.lookup(&token).is_some());
 
     let response = agent
-        .handle(AgentRequest::RevokeSession {
-            token: token.clone(),
-        })
+        .handle(AgentRequest::RevokeSession { token: token.clone() })
         .await;
     assert!(matches!(response, AgentResponse::Ok), "{response:?}");
     assert!(sessions.lookup(&token).is_none());

@@ -76,9 +76,7 @@ pub fn describe_error(err: &anyhow::Error) -> String {
             E::NoCurrentProject => {
                 "プロジェクトが未選択です。先に `envenb use <プロジェクト>` を実行してください".into()
             }
-            E::NoCurrentEnvironment => {
-                "環境が未選択です。先に `envenb env <環境>` を実行してください".into()
-            }
+            E::NoCurrentEnvironment => "環境が未選択です。先に `envenb env <環境>` を実行してください".into(),
             E::Vault(_) => format!("Vault エラー: {core}"),
             E::Database(_) => format!("データベースエラー: {core}"),
             other => other.to_string(),

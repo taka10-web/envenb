@@ -516,7 +516,10 @@ mod worktree_tests {
         }
 
         let wt = tmp.path().join("wt");
-        if !git(&main, &["worktree", "add", "-q", wt.to_str().unwrap(), "-b", "feature"]) {
+        if !git(
+            &main,
+            &["worktree", "add", "-q", wt.to_str().unwrap(), "-b", "feature"],
+        ) {
             return;
         }
         // A linked worktree carries a .git file, not a directory.

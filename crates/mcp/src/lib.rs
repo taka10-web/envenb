@@ -68,9 +68,7 @@ impl McpServer {
     async fn proxy_url(&self) -> String {
         let path = envenb_daemon::socket_path(self.core.paths().root());
         match envenb_daemon::uds::request(&path, &envenb_daemon::AgentRequest::ProxyInfo).await {
-            Ok(envenb_daemon::AgentResponse::Proxy {
-                proxy_url: Some(url),
-            }) => url,
+            Ok(envenb_daemon::AgentResponse::Proxy { proxy_url: Some(url) }) => url,
             _ => "http://127.0.0.1:7878 (start it with `envenb agent`)".to_string(),
         }
     }
@@ -196,7 +194,11 @@ impl McpServer {
                 let base_url_for_sdk = format!("{proxy_url}/{}", conn.name);
 
                 let mut examples = Vec::new();
-                if language.is_empty() || language.starts_with("js") || language.starts_with("ts") || language.starts_with("node") {
+                if language.is_empty()
+                    || language.starts_with("js")
+                    || language.starts_with("ts")
+                    || language.starts_with("node")
+                {
                     examples.push(json!({
                         "language": "javascript",
                         "note": "Any SDK that accepts a base URL works the same way.",

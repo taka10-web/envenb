@@ -96,7 +96,10 @@ pub async fn run(ctx: &Ctx, command: VarCommand) -> anyhow::Result<()> {
             }
             let vars = ctx.app.list_variables(&env.id).await?;
             let Some(v) = vars.iter().find(|v| v.name == name) else {
-                anyhow::bail!("{} {name}", tr("no such variable:", "そのような変数はありません:"));
+                anyhow::bail!(
+                    "{} {name}",
+                    tr("no such variable:", "そのような変数はありません:")
+                );
             };
             if v.kind != VariableKind::Secret {
                 anyhow::bail!(

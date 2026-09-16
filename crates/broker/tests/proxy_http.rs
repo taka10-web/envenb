@@ -160,10 +160,7 @@ async fn an_sdk_call_reaches_the_provider_without_ever_holding_the_secret() {
 
     // This is exactly what an SDK does: base URL + connection, key in the
     // Authorization header.
-    let (status, raw) = get(
-        &format!("{}/provider/v1/models", f.proxy_base),
-        Some(&f.token),
-    );
+    let (status, raw) = get(&format!("{}/provider/v1/models", f.proxy_base), Some(&f.token));
     assert_eq!(status, 200, "raw response was: {raw:?}");
 
     // The provider received the real credential, once, and not the session token.
@@ -226,10 +223,7 @@ async fn the_connection_decides_the_host_not_the_caller() {
     // Try to escape the connection's base URL via the path.
     for path in ["provider/../../etc/passwd", "provider/https://evil.example/x"] {
         let (status, _) = get(&format!("{}/{path}", f.proxy_base), Some(&f.token));
-        assert!(
-            status >= 400,
-            "path {path} should not be forwarded, got {status}"
-        );
+        assert!(status >= 400, "path {path} should not be forwarded, got {status}");
     }
     assert!(
         f.seen.recv_timeout(Duration::from_millis(300)).is_err(),

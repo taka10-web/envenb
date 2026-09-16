@@ -18,17 +18,16 @@
 //!   Human-only reveal and process injection will be added as separate,
 //!   clearly named, non-AI-facing entry points in later phases.
 
+pub mod biometric;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 mod db;
 pub mod dotenv;
-pub mod biometric;
 pub mod env_compat;
 mod error;
 mod model;
 mod paths;
 pub mod permission;
-pub mod session;
 mod repo;
 mod repo_ai;
 mod repo_cred;
@@ -36,6 +35,7 @@ mod secret;
 mod service;
 mod service_ai;
 mod service_cred;
+pub mod session;
 mod state;
 pub mod totp;
 
