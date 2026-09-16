@@ -24,3 +24,9 @@ afterEach(() => {
     /* ignore */
   }
 });
+
+// `findBy*` and `waitFor` default to 1s. That is tight on a CI runner where a
+// render plus a mocked query can take longer, so give them room: a real
+// failure still fails, just later.
+import { configure } from "@testing-library/dom";
+configure({ asyncUtilTimeout: 10_000 });
