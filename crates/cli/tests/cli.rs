@@ -297,18 +297,24 @@ fn phase2_connections_permissions_import_run() {
     assert!(out.contains("NODE_ENV=development") && out.contains("STRIPE_SECRET_KEY=\n"));
     assert!(!out.contains("NEEDLE"));
 
-    // `run` injects into the child only.
+    // `run` passes PUBLIC variables and withholds every secret: a child that
+    // cannot read a credential cannot leak one, whatever code it runs.
     let (ok, out, err) = run(
         home,
         &[
             "run",
             "sh",
             "-c",
-            "printf '%s|%s' \"$STRIPE_SECRET_KEY\" \"$ENVENB_ENVIRONMENT\"",
+            "printf '%s|%s|%s' \"$STRIPE_SECRET_KEY\" \"$NODE_ENV\" \"$ENVENB_ENVIRONMENT\"",
         ],
     );
     assert!(ok, "{err}");
-    assert_eq!(out.trim(), "sk_test_NEEDLE|development");
+    assert_eq!(
+        out.trim(),
+        "|development|development",
+        "the secret must be absent while PUBLIC values are present"
+    );
+    assert!(!out.contains("NEEDLE"), "a secret reached the child: {out}");
 
     // Settings shared with the desktop app.
     let (ok, out, _) = run(home, &["config", "theme", "dark", "--json"]);
@@ -444,20 +450,29 @@ fn credentials_store_copy_guard_and_run_injection() {
     let (ok, _, err) = run(home, &["cred", "copy", "qa-admin"]);
     assert!(!ok && err.contains("interactive terminal"));
 
-    // run --with-credentials injects into the child only.
+    // There is no flag that hands credentials to a child process. The option
+    // existed once; removing it is the point, so its absence is asserted.
+    let (ok, _, err) = run(
+        home,
+        &["run", "--with-credentials", "--", "sh", "-c", "true"],
+    );
+    assert!(
+        !ok && err.contains("--with-credentials"),
+        "--with-credentials must not exist: {err}"
+    );
+
+    // And a child started normally sees no credential fields either.
     let (ok, out, err) = run(
         home,
         &[
             "run",
-            "--with-credentials",
-            "--",
             "sh",
             "-c",
             "printf '%s|%s' \"$ENVENB_CRED_QA_ADMIN_USERNAME\" \"$ENVENB_CRED_BASTION_HOST\"",
         ],
     );
     assert!(ok, "{err}");
-    assert_eq!(out.trim(), "qa-user-NEEDLE|bastion.example.com");
+    assert_eq!(out.trim(), "|", "credential fields must not be injected");
 
     // Nothing on disk in the data dir holds plaintext (the key file we wrote lives in `home` too, skip it).
     for entry in std::fs::read_dir(home).unwrap() {
@@ -559,23 +574,38 @@ fn plaintext_commands_refuse_agents_and_non_terminals() {
     assert!(run(home, &["env", "development", "--create"]).0);
     assert!(run(home, &["var", "set", "APP_URL", "http://x"]).0);
 
-    // No terminal and no override → refused.
-    let out = envenb(home)
-        .env_remove("ENVENB_ALLOW_UNATTENDED")
-        .args(["run", "sh", "-c", "echo $APP_URL"])
-        .output()
-        .unwrap();
-    assert!(!out.status.success());
-    assert!(String::from_utf8_lossy(&out.stderr).contains("interactive terminal"));
-
-    // Inside a Claude Code session → refused even with the override absent/present.
+    // `envenb run` is no longer gated: it hands over PUBLIC values only, so
+    // an agent starting a dev server is not a leak. The gate now guards the
+    // commands that still put plaintext in front of a person.
     let out = envenb(home)
         .env("CLAUDECODE", "1")
         .args(["run", "sh", "-c", "echo $APP_URL"])
         .output()
         .unwrap();
+    assert!(
+        out.status.success(),
+        "run should work for agents now that it carries no secrets: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // No terminal and no override → refused.
+    let out = envenb(home)
+        .env_remove("ENVENB_ALLOW_UNATTENDED")
+        .args(["export-env", home.join("gate.env").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("interactive terminal"));
+
+    // Inside a Claude Code session → refused even with the override present.
+    let out = envenb(home)
+        .env("CLAUDECODE", "1")
+        .args(["export-env", home.join("gate.env").to_str().unwrap()])
+        .output()
+        .unwrap();
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("AI agent session"));
+    assert!(!home.join("gate.env").exists());
 
     // Metadata commands keep working for agents.
     let out = envenb(home)

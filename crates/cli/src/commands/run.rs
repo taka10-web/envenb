@@ -5,26 +5,46 @@ use anyhow::Context;
 use crate::commands::Ctx;
 use crate::i18n::tr;
 
-/// `envenb run <cmd...>`: decrypt the current environment and inject it into the
-/// child process only. This process's own environment is left untouched, and the
-/// values never reach stdout/stderr.
-pub async fn run(ctx: &Ctx, argv: Vec<String>, with_credentials: bool) -> anyhow::Result<()> {
-    crate::human::require_human("envenb run")?;
+/// `envenb run <cmd...>`: start a command with the environment's PUBLIC
+/// variables, and nothing else.
+///
+/// Secrets are deliberately absent. A value handed to a child process can be
+/// read back by any code running in it — `process.env.API_KEY`, `os.environ`,
+/// a stray `console.log(process.env)` — which is exactly the exposure EnvEnb
+/// exists to remove. Applications reach providers through the local proxy
+/// instead (`envenb session`), so the credential never leaves the daemon.
+pub async fn run(ctx: &Ctx, argv: Vec<String>) -> anyhow::Result<()> {
     let project = ctx.current_project().await?;
     let env = ctx.current_environment().await?;
     let (program, rest) = argv.split_first().context("empty command")?;
 
-    let process_env = ctx.app.resolve_process_env(&env.id).await?;
+    let public = ctx.app.resolve_public_env(&env.id).await?;
+    let secret_count = ctx
+        .app
+        .list_variables(&env.id)
+        .await?
+        .iter()
+        .filter(|v| v.kind == envenb_core::VariableKind::Secret)
+        .count();
+
     if !ctx.json {
         eprintln!(
-            "  EnvEnb · {} / {} · {} {} · {} {}",
+            "  EnvEnb · {} / {} · {} {}",
             project.name,
             env.name,
-            process_env.public_count(),
-            tr("public", "PUBLIC"),
-            process_env.secret_count(),
-            tr("secrets injected", "SECRET を注入")
+            public.len(),
+            tr("public variables", "PUBLIC 変数")
         );
+        if secret_count > 0 {
+            eprintln!(
+                "  {} {secret_count} {}",
+                tr("Secrets are not injected:", "Secret は注入されません:"),
+                tr(
+                    "kept in the vault. Use `envenb session` and call through the proxy.",
+                    "Vault に残ります。`envenb session` と Proxy 経由で利用してください。"
+                )
+            );
+        }
     }
 
     let mut cmd = Command::new(program);
@@ -34,42 +54,9 @@ pub async fn run(ctx: &Ctx, argv: Vec<String>, with_credentials: bool) -> anyhow
         .stderr(Stdio::inherit())
         .env("ENVENB_PROJECT", &project.name)
         .env("ENVENB_ENVIRONMENT", &env.name);
-    process_env.apply_to(&mut cmd);
-    drop(process_env);
-
-    // Optional: credentials as env vars / 0600 temp files, removed when we exit.
-    let _tempdir = if with_credentials {
-        let dir = tempfile::Builder::new().prefix("envenb-run-").tempdir()?;
-        for c in ctx.app.list_credentials(&env.id).await? {
-            let base = format!("ENVENB_CRED_{}", sanitize(&c.name));
-            for f in &c.fields {
-                if c.kind == envenb_core::CredentialKind::File && f.field == "content" {
-                    let filename = c
-                        .fields
-                        .iter()
-                        .find(|x| x.field == "filename")
-                        .and_then(|x| x.value.clone())
-                        .unwrap_or_else(|| c.name.clone());
-                    let path = dir.path().join(filename);
-                    ctx.app
-                        .with_credential_field(&c.id, "content", |v| super::cred::write_private(&path, v))
-                        .await??;
-                    cmd.env(format!("ENVENB_FILE_{}", sanitize(&c.name)), &path);
-                } else if f.secret {
-                    let value = ctx
-                        .app
-                        .with_credential_field(&c.id, &f.field, |v| v.to_string())
-                        .await?;
-                    cmd.env(format!("{base}_{}", sanitize(&f.field)), value);
-                } else if let Some(v) = &f.value {
-                    cmd.env(format!("{base}_{}", sanitize(&f.field)), v);
-                }
-            }
-        }
-        Some(dir)
-    } else {
-        None
-    };
+    for (name, value) in public {
+        cmd.env(name, value);
+    }
 
     let status = cmd
         .status()
@@ -78,16 +65,4 @@ pub async fn run(ctx: &Ctx, argv: Vec<String>, with_credentials: bool) -> anyhow
         std::process::exit(status.code().unwrap_or(1));
     }
     Ok(())
-}
-
-fn sanitize(name: &str) -> String {
-    name.chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() {
-                c.to_ascii_uppercase()
-            } else {
-                '_'
-            }
-        })
-        .collect()
 }

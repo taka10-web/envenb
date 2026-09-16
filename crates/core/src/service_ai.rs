@@ -581,7 +581,12 @@ impl EnvEnb {
     // (`envenb run`) and the Broker. Neither is reachable from an AI-facing API
     // by value: the runner is human-initiated, the Broker returns responses only.
 
-    /// Decrypt every variable of an environment for injection into a child process.
+    /// Decrypt every variable of an environment, secrets included.
+    ///
+    /// This exists for `envenb export-env`, which writes a real `.env` because
+    /// some tools cannot be pointed at the proxy. It is **not** what `envenb
+    /// run` uses: a child process gets PUBLIC values only, so application code
+    /// cannot read a provider credential out of its own environment.
     pub async fn resolve_process_env(&self, environment_id: &str) -> Result<ProcessEnv> {
         let vars = self.list_variables(environment_id).await?;
         let mut out = Vec::with_capacity(vars.len());
@@ -604,6 +609,22 @@ impl EnvEnb {
             public_count,
             secret_count,
         })
+    }
+
+    /// The PUBLIC variables of an environment, for a child process.
+    ///
+    /// Nothing here is encrypted at rest and nothing is withheld from an AI,
+    /// so handing these to a child costs nothing. Secrets deliberately have no
+    /// equivalent: they reach providers through the proxy, never through an
+    /// environment variable.
+    pub async fn resolve_public_env(&self, environment_id: &str) -> Result<Vec<(String, String)>> {
+        Ok(self
+            .list_variables(environment_id)
+            .await?
+            .into_iter()
+            .filter(|v| v.kind == VariableKind::Public)
+            .map(|v| (v.name, v.value.unwrap_or_default()))
+            .collect())
     }
 
     /// Run `f` with the plaintext of one SECRET. The closure shape discourages

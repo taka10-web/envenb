@@ -101,15 +101,10 @@ pub enum Command {
         command: VarCommand,
     },
     #[command(about = tr(
-        "Run a command with the current environment's variables and secrets injected",
-        "現在の環境の変数と Secret を注入してコマンドを実行",
+        "Run a command with the environment's PUBLIC variables. Secrets are never injected; use `envenb session` and the proxy",
+        "環境の PUBLIC 変数だけでコマンドを実行。Secret は注入しません (`envenb session` と Proxy を使ってください)",
     ), trailing_var_arg = true)]
     Run {
-        #[arg(long, help = tr(
-            "Also expose credentials: ENVENB_CRED_<NAME>_<FIELD> for account/database/ssh fields and ENVENB_FILE_<NAME> paths for file credentials (0600 temp files, removed on exit)",
-            "資格情報も渡す: account/database/ssh は ENVENB_CRED_<名前>_<フィールド>、file は ENVENB_FILE_<名前> にパス (0600 の一時ファイル、終了時に削除)",
-        ))]
-        with_credentials: bool,
         #[arg(value_name = "COMMAND", required = true, num_args = 1.., help = tr(
             "Any command and its arguments, e.g. `npm run dev`, `python app.py`, `go run .`, `docker compose up`",
             "任意のコマンドと引数。例: `npm run dev`、`python app.py`、`go run .`、`docker compose up`",

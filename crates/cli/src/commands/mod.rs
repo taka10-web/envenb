@@ -147,8 +147,7 @@ pub async fn run(args: Cli, core: envenb_core::Result<EnvEnb>) -> anyhow::Result
         Command::Var { command } => var::run(&ctx, command).await,
         Command::Run {
             command,
-            with_credentials,
-        } => run::run(&ctx, command, with_credentials).await,
+        } => run::run(&ctx, command).await,
         Command::Cred { command } => cred::run(&ctx, command).await,
         Command::Ssh { name, args } => cred::ssh(&ctx, &name, args).await,
         Command::Import {
