@@ -382,7 +382,7 @@ claude mcp add envenb -- envenb mcp --client claude-code
 
 Codex など別のツールは `--client codex` のように名前を変えると、権限と監査ログが分かれます。
 
-AI に見えるツールは次の 6 つです。**Secret を返すものはありません。**
+AI に見えるツールは次の 8 つです。**Secret を返すものはありません。**
 
 一覧系のツールはオブジェクトを返します (`{"projects": [...]}` のように)。MCP の仕様で
 `structuredContent` はオブジェクトである必要があるためです。プロジェクトが 1 つだけのときは
@@ -395,6 +395,32 @@ AI に見えるツールは次の 6 つです。**Secret を返すものはあ�
 | `list_credentials` | 名前と非秘密フィールド (host, url など) のみ |
 | `call_service` | 接続経由で HTTP を実行。EnvEnb が認証を付け、レスポンスから認証情報を除去して返す |
 | `supabase_select` | `GET /rest/v1/<table>` の簡易版 |
+| `get_connection_instructions` | Proxy を使う安全な実装方法を返す (後述) |
+
+### 2-2. AI に安全な書き方を教える
+
+MCP と Proxy は役割が違います。
+
+| | 役割 |
+|---|---|
+| **MCP** | AI が EnvEnb の使い方を理解し、操作する入口 |
+| **Proxy** | アプリが実際に通信する入口 |
+
+AI がアプリのコードを書くとき、既定の発想では
+`process.env.OPENAI_API_KEY` を読むコードを出します。そうさせないために、
+`get_connection_instructions` が「どう書くか」と「何をしてはいけないか」を返します。
+
+```text
+get_connection_instructions("openai")
+  → Proxy の baseURL
+  → SDK ごとの設定例 (JS / Python)
+  → セッショントークンの渡し方
+  → Streaming 対応可否
+  → 禁止事項 (process.env.OPENAI_API_KEY は存在しないし作ってもいけない、
+     利用者に鍵を貼らせない、など)
+```
+
+このツールも **Secret は返しません。**
 
 ### 3. 許す操作を決める
 
@@ -460,7 +486,7 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 | `project add/list/remove` | プロジェクトの管理 |
 | `use <名前>` | 対象プロジェクトの選択 |
 | `env [<名前>] [--create]` | 環境の一覧・作成・選択 |
-| `var set/set-secret/list/kind/remove` | 変数の管理 (`kind` は PUBLIC → SECRET の変更) |
+| `var set/set-secret/list/kind/copy/remove` | 変数の管理 (`kind` は PUBLIC → SECRET、`copy` は SECRET をクリップボードへ) |
 | `run <コマンド>` | PUBLIC 変数だけを渡してコマンドを実行 (Secret は渡りません) |
 | `import [ファイル] [--yes] [--dry-run] [--delete]` | `.env` の取り込み |
 | `clean [ディレクトリ] [--dry-run] [--yes]` | 取り込み済み `.env` の削除 |
@@ -472,7 +498,8 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 | `activity [--limit N]` | 監査ログ |
 | `mcp --client <名前>` | MCP サーバーとして起動 |
 | `scan [ディレクトリ]` | 漏えい検査 |
-| `agent [--ping]` | Local Agent (Unix ソケット) |
+| `agent [--ping] [--proxy-port N]` | daemon (Unix ソケット) と SDK 向け HTTP Proxy を起動 |
+| `session [--connection N] [--ttl 秒] [--client 名前]` | Proxy 用のセッションを発行 (Secret は含みません) |
 | `vault status / key-backend <file\|keychain>` | マスターキーの保存先 |
 | `config show / language / theme` | 設定 (Desktop と共通) |
 | `status` | 現在の選択とデータの場所 |
@@ -503,8 +530,45 @@ EnvEnb は macOS 専用です。
 ### なぜ実値の `.env` を残さないのか
 
 Claude Code などの AI は作業ディレクトリのファイルを読みます。平文の `.env.local` が
-隣にあれば、Vault と Broker で分離した意味がありません。値は EnvEnb に置き、
-アプリには `envenb run` で渡すのが基本形です。
+隣にあれば、Vault と Broker で分離した意味がありません。
+
+同じ理由で、**EnvEnb はアプリのプロセスにも Secret を渡しません。**
+`process.env` に入れた値は、そのプロセス内のどのコードからも読み戻せます。
+AI が書いたコードを動かす以上、渡した時点で秘密ではなくなります。
+
+| 用途 | 手段 |
+|---|---|
+| PUBLIC 変数をアプリに渡す | `envenb run <コマンド>` |
+| Secret を使う API を呼ぶ | Proxy 経由 (`envenb agent` + `envenb session`) |
+| 人が値そのものを見る | `envenb var copy` (クリップボード、30 秒で消去) |
+| Proxy を通せないツールに渡す | `envenb export-env` (0600 の実ファイル) |
+
+### Proxy が Secret を肩代わりする仕組み
+
+アプリは宛先だけを指定し、認証情報は EnvEnb が付けます。
+
+```text
+アプリ (SDK)
+  ↓  baseURL = http://127.0.0.1:7878/<接続名>
+  ↓  apiKey  = ENVENB_SESSION_TOKEN
+EnvEnb Proxy
+  ↓  ① セッショントークンを検証して破棄
+  ↓  ② Vault から本物の認証情報を取り出して付与
+外部 API
+  ↓  ③ 応答を逐次転送しつつ、認証情報を [REDACTED] に置換
+アプリ
+```
+
+- **セッショントークンは Provider の鍵ではありません。** EnvEnb を使うための
+  一時的な許可証で、プロジェクト・環境・接続・有効期限に限定されます。
+  Vault には保存せず、ハッシュだけをメモリに持ちます。
+- **転送先は接続の `base_url` から決まります。** パスは指定できますが、
+  ホストは変えられません。リダイレクトも追いません。
+- **呼び出し元が付けた認証情報は破棄されます。** SDK が送るダミーの
+  `Authorization` はもちろん、その接続が認証に使うヘッダも含めて捨ててから、
+  本物に差し替えます。
+- **ストリーミングはそのまま通ります。** 応答を溜め込まないので、SSE や
+  トークン単位の生成が遅延しません。
 
 ### Secret の扱い
 
@@ -517,9 +581,15 @@ Claude Code などの AI は作業ディレクトリのファイルを読みま�
 
 ### AI との境界
 
-- 平文を出すコマンド (`run` / `export-env` / `ssh` / `cred copy` / `var copy`) は **人間専用** です。
-  対話端末からのみ実行でき、`CLAUDECODE` などエージェントのセッション内では拒否されます。
-  自分で書いたスクリプトからは `ENVENB_ALLOW_UNATTENDED=1` で許可できます。
+- **本当の境界は「そもそもプロセス内に無いこと」です。** AI エージェントの
+  検知 (`CLAUDECODE` など) は補助にすぎません。検知をすり抜けても、
+  アプリに渡っていない値は取得できません。
+- 平文を出すコマンド (`export-env` / `ssh` / `cred copy` / `var copy`) は
+  **人間専用** です。対話端末からのみ実行でき、エージェントのセッション内では
+  拒否されます。自分で書いたスクリプトからは `ENVENB_ALLOW_UNATTENDED=1` で
+  許可できます。
+- **`envenb run` は人間専用ではありません。** PUBLIC 変数しか渡さないため、
+  AI が開発サーバーを起動すること自体は漏えいではないからです。
 - `var list` や `status` のようなメタデータだけのコマンドは AI からも使えます。
 - 「管理者が許可した」と AI が主張しても、判定に使うのは EnvEnb のルールだけです。
 
@@ -534,7 +604,7 @@ Claude Code などの AI は作業ディレクトリのファイルを読みま�
 | 機能 | 状態 |
 |---|---|
 | AWS SSO / AssumeRole | 未実装 (静的アクセスキーの SigV4 は対応) |
-| Secret の手動 Reveal (Touch ID 付き) | 未実装 |
+| ASK の承認を Proxy から行う | 未対応 (人がいないため拒否。MCP と Desktop では可能) |
 | Windows / Linux 対応 | 対象外 (macOS 専用) |
 | Playwright による E2E テスト | 未実装 (Vitest の単体テストはあり) |
 

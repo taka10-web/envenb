@@ -6,8 +6,21 @@ EnvEnb は、案件ごとの環境変数・Secret・外部サービスの認証�
 で管理する開発者ツールです。Claude Code / Codex などの AI エージェントには
 Secret 本体を見せず、Broker 経由で許可された操作だけを実行させます。
 
-平文の `.env` をディスクから無くすことが目的です。値は暗号化して保管し、
-アプリを起動する瞬間だけ子プロセスの環境変数として渡します。
+平文の `.env` をディスクから無くし、**アプリのプロセスにも Secret を置かない**
+ことが目的です。`process.env` に入れた値は、そのプロセス内のどのコードからも
+読み戻せます。AI が書いたコードを動かす以上、渡した時点で秘密ではありません。
+
+Secret を使う API 呼び出しは、ローカルの Proxy が肩代わりします。
+
+```text
+アプリ / AI  →  EnvEnb daemon  →  外部 API
+             (ここだけが Secret を知る)
+```
+
+```console
+$ envenb run node -e 'console.log(process.env.OPENAI_API_KEY)'
+undefined
+```
 
 [English](README.md) · [使い方ガイド](USAGE.md) · [設計](docs/ARCHITECTURE.md)
 

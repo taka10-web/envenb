@@ -154,3 +154,44 @@ fn run_starts_a_command_without_handing_over_a_secret() {
         "run should say how to reach the secret: {err}"
     );
 }
+
+/// The README opens with this exact command. If it ever stops printing
+/// `undefined`, the headline claim is false and this must fail.
+#[test]
+fn the_readme_headline_example_is_true() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+    assert!(run(home, &["project", "add", "my-app"]).0);
+    assert!(run(home, &["env", "development", "--create"]).0);
+
+    let mut cmd = envenb(home)
+        .args(["var", "set-secret", "OPENAI_API_KEY"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    {
+        use std::io::Write;
+        cmd.stdin
+            .as_mut()
+            .unwrap()
+            .write_all(b"sk-README-SECRET")
+            .unwrap();
+    }
+    assert!(cmd.wait_with_output().unwrap().status.success());
+
+    let (ok, out, err) = run(
+        home,
+        &["run", "node", "-e", "console.log(process.env.OPENAI_API_KEY)"],
+    );
+    if !ok && err.contains("failed to start") {
+        return; // no node on this machine
+    }
+    assert!(ok, "{err}");
+    assert_eq!(
+        out.trim(),
+        "undefined",
+        "the README promises `undefined` here: {out}"
+    );
+}

@@ -15,8 +15,9 @@ Local-first environment variables, secrets and service credentials for AI-assist
 
 ---
 
-Store a key once. Your app gets the real value; your coding agent gets a name and a
-broker that calls the API on its behalf.
+Store a key once. Nothing else on your machine ever holds it — not your app, not
+your agent, not a `.env` file. Calls that need it go through EnvEnb, which
+attaches the credential on the way out.
 
 ```console
 $ envenb var list                        # what you see
@@ -33,11 +34,15 @@ $ # what Claude Code sees through MCP
     "note": "value withheld; use call_service" }
 ]
 
-$ # and if the agent reaches for the shell instead
-error: envenb run: refused inside an AI agent session (CLAUDECODE).
-Secrets are for humans and for `envenb run` started from a real terminal;
-agents use the MCP broker.
+$ # and what your own application sees
+$ envenb run node -e 'console.log(process.env.OPENAI_API_KEY)'
+undefined
 ```
+
+That last line is the design. A value placed in `process.env` can be read back
+by any code in that process — including code an agent wrote. So it is never put
+there. The application talks to a local proxy instead, and the credential stays
+in the daemon.
 
 ## Why EnvEnb
 
