@@ -79,7 +79,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
       {
         title: "4. Run your own app with everything injected",
         description: "Decrypted values go into the child process only. Do not start an AI agent this way; give it the broker instead.",
-        steps: [{ title: "Terminal", body: "ENVENB_PROJECT and ENVENB_ENVIRONMENT are set as well.", commands: [{ run: "envenb run npm run dev", note: "Any command works: npm, python, go, docker, a shell script." }, { run: "envenb run python app.py", note: "The command is started with the variables and decrypted secrets in its environment." }] }],
+        steps: [{ title: "Terminal", body: "ENVENB_PROJECT and ENVENB_ENVIRONMENT are set as well.", commands: [{ run: "envenb run npm run dev", note: "Starts your command with the PUBLIC variables. Secrets are never injected." }, { run: "envenb agent &", note: "Runs the daemon and the local proxy that applications call instead of holding a key." }, { run: "eval \"$(envenb session)\"", note: "Exports ENVENB_PROXY_URL and ENVENB_SESSION_TOKEN. Point your SDK\u2019s base URL at the proxy and pass the token as its API key." }] }],
       },
       {
         title: "5. Describe the services an AI may use",
@@ -118,7 +118,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "From the terminal",
             body: "The same records are available to the CLI, including SSH and wrapped commands that receive the credential as environment variables.",
-            commands: [{ run: "envenb cred add my-account --kind account", note: "Adds a test account. Username, password and TOTP seed are prompted for, hidden." }, { run: "envenb cred copy my-account --field password", note: "Copies one field to the clipboard and clears it after 30 seconds." }, { run: "envenb ssh bastion", note: "Opens SSH with the stored key, written to a 0600 temp file and deleted on exit." }, { run: "envenb run --with-credentials -- sqlplus ...", note: "Like `envenb run`, but also passes credential fields as ENVENB_CRED_* variables." }],
+            commands: [{ run: "envenb cred add my-account --kind account", note: "Adds a test account. Username, password and TOTP seed are prompted for, hidden." }, { run: "envenb cred copy my-account --field password", note: "Copies one field to the clipboard and clears it after 30 seconds." }, { run: "envenb ssh bastion", note: "Opens SSH with the stored key, written to a 0600 temp file and deleted on exit." }],
           },
           { title: "What the AI sees", body: "Only names and non-secret fields, through list_credentials. There is no tool that returns a password, key or file content." },
         ],
@@ -176,7 +176,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
       {
         title: "4. 自分のアプリに注入して起動する",
         description: "復号した値は子プロセスにだけ渡ります。AI エージェント自体をこの方法で起こさず、AI には次の Broker 経由を使ってください。",
-        steps: [{ title: "ターミナル", body: "ENVENB_PROJECT と ENVENB_ENVIRONMENT も渡されます。", commands: [{ run: "envenb run npm run dev", note: "任意のコマンドが使えます。npm / python / go / docker / シェルスクリプトなど。" }, { run: "envenb run python app.py", note: "変数と復号した Secret を環境変数に入れて、コマンドを起動します。" }] }],
+        steps: [{ title: "ターミナル", body: "ENVENB_PROJECT と ENVENB_ENVIRONMENT も渡されます。", commands: [{ run: "envenb run npm run dev", note: "PUBLIC 変数だけを渡してコマンドを起動します。Secret は渡りません。" }, { run: "envenb agent &", note: "daemon とローカル Proxy を起動します。アプリは鍵を持つ代わりにここを呼びます。" }, { run: "eval \"$(envenb session)\"", note: "ENVENB_PROXY_URL と ENVENB_SESSION_TOKEN を出力します。SDK の baseURL を Proxy に向け、apiKey にトークンを渡します。" }] }],
       },
       {
         title: "5. AI に使わせるサービスを定義する",
@@ -215,7 +215,7 @@ const GUIDE: Record<"en" | "ja", { title: string; sections: Section[]; defaults:
           {
             title: "ターミナルで",
             body: "同じレコードを CLI からも使えます。SSH 接続や、資格情報を環境変数として受け取るコマンドの起動にも対応しています。",
-            commands: [{ run: "envenb cred add my-account --kind account", note: "テストアカウントを追加します。ユーザー名・パスワード・TOTP シードは非表示で入力します。" }, { run: "envenb cred copy my-account --field password", note: "フィールドを 1 つクリップボードにコピーし、30 秒後に消去します。" }, { run: "envenb ssh bastion", note: "保存した鍵で SSH に接続します。鍵は 0600 の一時ファイルに書かれ、終了時に消えます。" }, { run: "envenb run --with-credentials -- sqlplus ...", note: "`envenb run` に加えて、資格情報を ENVENB_CRED_* として渡します。" }],
+            commands: [{ run: "envenb cred add my-account --kind account", note: "テストアカウントを追加します。ユーザー名・パスワード・TOTP シードは非表示で入力します。" }, { run: "envenb cred copy my-account --field password", note: "フィールドを 1 つクリップボードにコピーし、30 秒後に消去します。" }, { run: "envenb ssh bastion", note: "保存した鍵で SSH に接続します。鍵は 0600 の一時ファイルに書かれ、終了時に消えます。" }],
           },
           { title: "AI に見えるもの", body: "list_credentials で見えるのは名前と非 Secret 項目だけです。パスワード・鍵・ファイル内容を返すツールは存在しません。" },
         ],

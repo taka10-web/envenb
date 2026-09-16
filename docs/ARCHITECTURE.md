@@ -79,7 +79,8 @@ envenb/
 │  ├ core/                 domain models, SQLx/SQLite repo, service façade `EnvEnb`,
 │  │                       permission engine, .env parser
 │  ├ vault/                XChaCha20-Poly1305 sealing + `MasterKeyProvider` (file / OS keychain)
-│  ├ broker/               Secret Broker: authenticated HTTP calls, credential scrubbed from responses
+│  ├ broker/               Secret Broker + local proxy: authenticated HTTP calls
+│  │                       (streaming), credential scrubbed from responses
 │  ├ mcp/                  MCP server (stdio, JSON-RPC 2.0) for Claude Code / Codex
 │  ├ daemon/               Local Agent skeleton (request/response types, in-process handler)
 │  └ cli/                  `envenb` binary (clap) + maiko splash

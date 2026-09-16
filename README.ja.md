@@ -38,7 +38,8 @@ Desktop アプリは `pnpm install && pnpm desktop:build` でビルドし、表�
 - CLI `envenb`: `project list/add/remove`、`use`、`env`、`var list/set/set-secret/remove`、`status`。`--json`、`--no-animation`。ヘルプとメッセージは日本語対応 (`ENVENB_LANG=ja` または `LANG`)。引数なしで usage を表示
 - 使い方の手順書: [USAGE.md](USAGE.md)
 - Desktop (Tauri 2 + React): 変数・資格情報・接続・AI アクセス・アクティビティ・プロジェクト。**日本語・英語切り替え対応**
-- `envenb run`: 復号した Secret を子プロセスの環境変数にだけ注入
+- `envenb run`: PUBLIC 変数だけを子プロセスへ渡す。Secret は渡さない (`process.env` から読み戻せてしまうため)
+- ローカル Proxy (`envenb agent` + `envenb session`): 既存 SDK の baseURL を向けるだけで、アプリに Secret を持たせずに外部 API を呼べる。Streaming 対応
 - `envenb var copy`: 値そのものが必要なときに SECRET をクリップボードへ (30 秒で自動消去、画面には出さない)。対話端末のみ、AI セッションでは拒否
 - `.env` Import (PUBLIC / SECRET を自動分類し、TTY では 1 件ずつ確認) と `.env.example` Export
 - Connection (generic_http / openai / supabase)。認証情報は SECRET 変数の「名前」で参照
@@ -51,7 +52,7 @@ Desktop アプリは `pnpm install && pnpm desktop:build` でビルドし、表�
 - 設定 (言語 ja / en / system、テーマ light / dark / system) を CLI と Desktop で共有
 - ドット絵の舞妓 (赤・錦・黒) を CLI の節目コマンドで表示。非 TTY / CI / `--json` / `--no-animation` では出さず、`NO_COLOR` 対応
 - Connector 追加: Cloudflare / Vercel / GitHub (Bearer)、AWS (SigV4 署名を Broker 内で実施。AWS 公式のテストベクタで検証)
-- Credential (資格情報): テストアカウント (URL・ユーザー名・パスワード・TOTP)、SSH (ホスト・ユーザー・秘密鍵)、データベース、ファイル/証明書をフィールド単位で暗号化保存。`envenb cred copy` / Desktop のコピーボタンでクリップボードへ (30 秒で自動消去、値は画面に出さない)、`envenb ssh`、`envenb run --with-credentials`。AI には `list_credentials` で名前と非秘密フィールドのみ
+- Credential (資格情報): テストアカウント (URL・ユーザー名・パスワード・TOTP)、SSH (ホスト・ユーザー・秘密鍵)、データベース、ファイル/証明書をフィールド単位で暗号化保存。`envenb cred copy` / Desktop のコピーボタンでクリップボードへ (30 秒で自動消去、値は画面に出さない)、`envenb ssh`。AI には `list_credentials` で名前と非秘密フィールドのみ
 - `envenb scan`: 作業ツリー内に Secret の値が漏れていないか、追跡中の `.env` が無いかを検査 (値は表示しない)
 - `envenb agent`: Local Agent を Unix ソケット (0600) で起動
 - GitHub Actions: CI (fmt / clippy / test / typecheck / vitest / build) とタグ時のリリースビルド

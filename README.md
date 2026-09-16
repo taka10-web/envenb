@@ -122,12 +122,36 @@ Imported: PUBLIC 1 / SECRET 1
 Added to .gitignore: .env.local
 
 $ envenb run npm run dev
-  EnvEnb · my-app / development · 1 public · 1 secrets injected
+  EnvEnb · my-app / development · 1 public variables
+  Secrets are not injected: 1 kept in the vault. Use `envenb session` and call through the proxy.
 ```
 
 `run` takes any command — `npm run dev`, `python app.py`, `go run .`,
-`docker compose up`, a shell script of your own. Values are injected into the
-child process only. Nothing is written back to disk.
+`docker compose up`, a shell script of your own. It passes the PUBLIC
+variables and nothing else.
+
+**Secrets are never handed to your application.** A value in
+`process.env` can be read back by any code running in that process, which is
+the exposure EnvEnb exists to remove. Applications reach providers through a
+local proxy instead:
+
+```console
+$ envenb agent &                         # daemon + proxy on 127.0.0.1
+$ eval "$(envenb session)"               # ENVENB_PROXY_URL, ENVENB_SESSION_TOKEN
+```
+
+Then point an SDK at it — no code changes beyond a base URL:
+
+```js
+const client = new OpenAI({
+  baseURL: `${process.env.ENVENB_PROXY_URL}/openai/v1`,
+  apiKey: process.env.ENVENB_SESSION_TOKEN,  // an EnvEnb session, not a provider key
+});
+```
+
+EnvEnb discards that token, attaches the real credential, and streams the
+response back. Streaming works unchanged; the credential never enters your
+process.
 
 When you need a secret's value yourself, it goes to the clipboard rather than to
 your scrollback:

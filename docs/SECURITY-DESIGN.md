@@ -9,10 +9,16 @@
   `MasterKey` (vault) print `[REDACTED]` under `Debug`, have no `Display`,
   `Serialize`, `Clone` or `PartialEq`, and are zeroized on drop. Reading the
   content requires calling `expose()`, which is easy to grep for in review.
+- **Secrets never enter an application process.** `envenb run` passes PUBLIC
+  variables only. A value in `process.env` can be read back by any code in that
+  process, so handing one over ends the guarantee regardless of who started the
+  command. Applications call providers through the local proxy, which holds the
+  credential on their behalf.
 - **No AI-reachable "get secret".** Decryption is `pub(crate)`; the sanctioned
-  consumers are `resolve_process_env` (for `envenb run`, human initiated), the
-  closure-based `with_secret` used by the Broker, and `with_credential_field`
-  behind the human-only copy / ssh / run paths. Neither
+  consumers are the closure-based `with_secret` used by the Broker and the
+  proxy, `with_credential_field` behind the human-only copy / ssh paths, and
+  `resolve_process_env` for `export-env` (which writes a real `.env` for tools
+  that cannot be proxied, and is human-only). Neither
   the Tauri commands, the MCP tools nor `AgentRequest` can return a value. The
   desktop app cannot reveal a stored secret; a human-only reveal with OS
   authentication is still deliberately absent.
@@ -32,13 +38,20 @@
 - **Logs and errors carry identifiers only.** `CoreError` / `VaultError`
   variants embed names and paths, never values; AEAD failures are reported as
   one opaque `Decrypt` error.
-- **Plaintext-emitting commands are human-only.** `envenb run`, `export-env`,
-  `ssh`, `cred copy` and `var copy` require an interactive terminal and refuse to run inside
-  known agent sessions (`CLAUDECODE`, Codex, Cursor, Gemini CLI markers). An AI
-  with shell access therefore cannot call `envenb run env` to dump the vault;
-  it gets the MCP broker instead. `ENVENB_ALLOW_UNATTENDED=1` opts a script
-  you run yourself back in. Metadata commands (`var list`, `status`, …) keep
-  working for agents.
+- **Plaintext-emitting commands are human-only.** `export-env`, `ssh`,
+  `cred copy` and `var copy` require an interactive terminal and refuse to run
+  inside known agent sessions (`CLAUDECODE`, Codex, Cursor, Gemini CLI
+  markers). `ENVENB_ALLOW_UNATTENDED=1` opts a script you run yourself back in.
+  `envenb run` is *not* gated: it emits no plaintext, so an agent starting a
+  dev server is not a leak. This detection is a convenience, not the boundary —
+  the boundary is that the secret is never in the process to begin with.
+- **The proxy is not an open relay.** The upstream host comes from the
+  connection's `base_url`; a caller chooses a path, never a host. Redirects are
+  refused, and any header or query parameter that would authenticate the caller
+  to the provider — including the header *this* connection authenticates with —
+  is discarded before the request leaves. Session tokens authenticate callers
+  to EnvEnb only, are scoped to a project / environment / connection set, expire,
+  and are stored as hashes.
 - **Master key is separate from the database.** Copying `envenb.db` alone
   yields nothing. New vaults default to the OS keychain
   (`ENVENB_KEY_BACKEND=file` overrides, and existing `master.key` files are kept);

@@ -230,7 +230,6 @@ envenb cred list
 envenb cred copy qa-admin --field password   # クリップボードへ。30 秒後に自動消去
 envenb cred copy qa-admin --field totp       # 現在のワンタイムコード
 envenb ssh bastion -- uptime                 # 鍵は 0600 の一時ファイル、終了時に削除
-envenb run --with-credentials -- sqlplus ... # ENVENB_CRED_<名前>_<フィールド> で渡る
 ```
 
 ### 漏えいを検査する
@@ -392,7 +391,7 @@ CLI と同じデータを読み書きするので、どちらで登録しても�
 | `use <名前>` | 対象プロジェクトの選択 |
 | `env [<名前>] [--create]` | 環境の一覧・作成・選択 |
 | `var set/set-secret/list/kind/remove` | 変数の管理 (`kind` は PUBLIC → SECRET の変更) |
-| `run [--with-credentials] <コマンド>` | 値を注入してコマンドを実行 |
+| `run <コマンド>` | PUBLIC 変数だけを渡してコマンドを実行 (Secret は渡りません) |
 | `import [ファイル] [--yes] [--dry-run] [--delete]` | `.env` の取り込み |
 | `clean [ディレクトリ] [--dry-run] [--yes]` | 取り込み済み `.env` の削除 |
 | `export-example` / `export-env [ファイル]` | テンプレート / 実値ファイルの書き出し |
