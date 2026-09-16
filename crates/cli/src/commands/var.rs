@@ -201,6 +201,7 @@ pub(crate) fn read_line_no_echo() -> anyhow::Result<String> {
 }
 
 fn zeroize_string(mut s: String) {
-    // Best-effort scrub of the intermediate buffer.
-    unsafe { s.as_bytes_mut() }.fill(0);
+    // Scrub the intermediate buffer. `zeroize` is a volatile write, so it is
+    // not optimised away the way a plain `fill(0)` on a dying value can be.
+    zeroize::Zeroize::zeroize(&mut s);
 }

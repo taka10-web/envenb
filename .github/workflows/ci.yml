@@ -26,6 +26,18 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --no-fail-fast
 
+  # A vulnerable dependency is a real defect in a tool that holds credentials,
+  # so it fails the build rather than being a report someone reads later.
+  audit:
+    name: Dependency advisories
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit
+
   frontend:
     name: Frontend (typecheck, test, build)
     runs-on: ubuntu-latest

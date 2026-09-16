@@ -248,7 +248,7 @@ impl Broker {
         }
         // Drop the plaintext copy as soon as the scrub is done.
         if let Some(mut fp) = fingerprint.take() {
-            unsafe { fp.as_bytes_mut() }.fill(0);
+            zeroize::Zeroize::zeroize(&mut fp);
         }
         let body = if !truncated {
             serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text))
@@ -450,7 +450,7 @@ impl Broker {
 
         if let Some(mut fp) = fingerprint {
             // The copy held here is done; the stream closure keeps its own.
-            unsafe { fp.as_bytes_mut() }.fill(0);
+            zeroize::Zeroize::zeroize(&mut fp);
         }
 
         Ok(StreamedResponse {

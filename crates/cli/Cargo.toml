@@ -22,6 +22,7 @@ tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
 crossterm = { workspace = true }
 secrecy = { workspace = true }
+zeroize = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }

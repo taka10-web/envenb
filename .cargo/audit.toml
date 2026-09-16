@@ -1,0 +1,13 @@
+# `cargo audit` reads Cargo.lock, which lists every crate any optional feature
+# could pull in — not the crates this workspace actually builds.
+#
+# RUSTSEC-2023-0071 (rsa): reached only through `sqlx-mysql`. EnvEnb enables
+# the `sqlite` feature only, so neither crate appears in
+# `cargo tree -e normal`, and neither is compiled or linked. It cannot be
+# removed from the lock file while `sqlx`'s `macros` feature is on, and that
+# feature is required by `sqlx::migrate!`.
+#
+# Re-check this whenever sqlx is upgraded: if a release stops pulling MySQL
+# into sqlx-macros-core, drop the ignore.
+[advisories]
+ignore = ["RUSTSEC-2023-0071"]
