@@ -45,6 +45,12 @@
   `envenb run` is *not* gated: it emits no plaintext, so an agent starting a
   dev server is not a leak. This detection is a convenience, not the boundary —
   the boundary is that the secret is never in the process to begin with.
+- **A session token is a capability, not a credential.** The application holds
+  one and can therefore call the proxy — that is the point of having a proxy at
+  all. It is scoped to a project / environment / connection set, expires, works
+  only against a running local daemon, and every call it makes is in the audit
+  log. Losing one is bounded and visible; losing a provider key is neither. See
+  [../SECURITY.md](../SECURITY.md) for the comparison.
 - **The proxy is not an open relay.** The upstream host comes from the
   connection's `base_url`; a caller chooses a path, never a host. Redirects are
   refused, and any header or query parameter that would authenticate the caller
