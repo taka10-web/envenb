@@ -1,0 +1,7 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/taka10-web/envenb/security/advisories/new
+    about: >-
+      Do not open a public issue. Report privately through GitHub Security
+      Advisories so a fix can ship before the details are public.

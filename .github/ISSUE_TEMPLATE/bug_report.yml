@@ -1,0 +1,77 @@
+name: Bug report
+description: Something does not work the way it is documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a real credential.** Not in a log, not in a command, not
+        in a screenshot. If a value is needed to explain the problem, replace it
+        with `sk-EXAMPLE` and say how long the real one was.
+
+        If this is a vulnerability rather than a bug, close this and use
+        [Security Advisories](https://github.com/taka10-web/envenb/security/advisories/new)
+        instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        Ran `envenb run npm run dev` after `eval "$(envenb session)"`.
+        Expected the app to reach Gemini through the proxy.
+        Got a 403 with "Ask by EnvEnb policy".
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: >-
+        The shortest sequence that shows the problem, starting from a state
+        someone else can reach.
+      placeholder: |
+        1. envenb project add my-app
+        2. envenb env development --create
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of `envenb status`
+      description: >-
+        This names the data directory, the key backend and the current
+        selection. It contains no secret values.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`envenb --version`, and the commit if you built from source."
+      placeholder: "envenb 0.1.0 (a0f7170)"
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "15.2 (Apple Silicon)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: >-
+        Add `-v` for more detail. Check it for credentials before pasting —
+        EnvEnb redacts its own, but your shell history and other tools do not.
+      render: text
